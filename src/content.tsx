@@ -1,7 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import ContentApp from "./ContentApp";
-import { shadowDomCSS } from "./styles/shadowDomCSS";
 
 const rootId = "job-tracker-shadow-host";
 
@@ -31,12 +30,7 @@ function createShadowRoot() {
   // Create shadow root (closed mode for better encapsulation)
   const shadowRoot = shadowHost.attachShadow({ mode: "closed" });
 
-  // Inject CSS into shadow DOM
-  const style = document.createElement("style");
-  style.textContent = shadowDomCSS;
-  shadowRoot.appendChild(style);
-
-  // Create container for React app
+  // Create container for React app (Emotion will handle CSS injection)
   const reactContainer = document.createElement("div");
   Object.assign(reactContainer.style, {
     width: "100%",
@@ -45,15 +39,15 @@ function createShadowRoot() {
   });
   shadowRoot.appendChild(reactContainer);
 
-  return reactContainer;
+  return { reactContainer, shadowRoot };
 }
 
 // Create shadow DOM and render React app
-const reactContainer = createShadowRoot();
+const { reactContainer, shadowRoot } = createShadowRoot();
 const root = createRoot(reactContainer);
 
 root.render(
   <React.StrictMode>
-    <ContentApp />
+    <ContentApp shadowRoot={shadowRoot} />
   </React.StrictMode>
 );

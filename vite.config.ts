@@ -1,10 +1,16 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react({
+      jsxImportSource: "@emotion/react",
+      babel: {
+        plugins: ["@emotion/babel-plugin"]
+      }
+    })
+  ],
   build: {
     rollupOptions: {
       input: {
@@ -14,7 +20,7 @@ export default defineConfig({
         entryFileNames: "content.js",
         // Ensure CSS is inlined into the JS bundle for Shadow DOM injection
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name?.endsWith(".css")) {
+          if (assetInfo.names?.[0]?.endsWith(".css")) {
             return "content.css";
           }
           return "[name].[ext]";

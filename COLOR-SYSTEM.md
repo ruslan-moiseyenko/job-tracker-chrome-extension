@@ -7,7 +7,8 @@ src/constants/
 ├── colors.ts          # Main color constants
 ├── theme-variants.ts  # Example theme variants
 src/styles/
-├── shadowDomCSS.ts    # CSS generation using color constants
+├── theme.ts          # Emotion theme configuration
+├── GlobalStyles.tsx  # Global styles using Emotion
 ```
 
 ## 🔧 **How It Works**

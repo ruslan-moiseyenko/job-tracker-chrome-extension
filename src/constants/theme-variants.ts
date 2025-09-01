@@ -34,5 +34,5 @@ export const GREEN_COLORS = {
 } as const;
 
 // Usage example:
-// To switch themes, just import different colors in shadowDomCSS.ts:
+// To switch themes, update the colors import in theme.ts:
 // import { DARK_COLORS as COLORS } from '../constants/theme-variants';

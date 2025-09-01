@@ -17,7 +17,7 @@ interface UseFloatingButtonReturn {
   handleDragStart: (e: React.MouseEvent) => void;
   handleButtonClick: () => void;
   isDragging: boolean;
-  buttonRef: React.RefObject<HTMLDivElement | null>;
+  buttonRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -29,13 +29,7 @@ export function useFloatingButton(): UseFloatingButtonReturn {
   const [position, setPosition] = useState<Position>(() =>
     getInitialPosition()
   );
-  const buttonRef = useRef<HTMLDivElement>(null);
-
-  // No longer need useEffect for initial position since it's calculated immediately
-  // useEffect(() => {
-  //   const initialPosition = getInitialPosition();
-  //   setPosition(initialPosition);
-  // }, []);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Handle window resize
   useWindowResize(setPosition);

@@ -2,8 +2,15 @@ import FloatingButton from "./FloatingButton";
 import FloatingForm from "./FloatingForm";
 import { useFloatingButton } from "./hooks/useFloatingButton";
 import { useFloatingForm } from "./hooks/useFloatingForm";
+import { ThemeProvider } from "./styles/ThemeProvider";
+import { GlobalStyles } from "./styles/GlobalStyles";
+import { ShadowRootCacheProvider } from "./styles/ShadowRootCacheProvider";
 
-export default function ContentApp() {
+interface ContentAppProps {
+  shadowRoot?: ShadowRoot;
+}
+
+export default function ContentApp({ shadowRoot }: ContentAppProps) {
   const {
     position,
     showForm,
@@ -19,8 +26,9 @@ export default function ContentApp() {
     showForm
   );
 
-  return (
-    <>
+  const AppContent = (
+    <ThemeProvider>
+      <GlobalStyles />
       {!showForm && (
         <FloatingButton
           onClick={handleButtonClick}
@@ -58,6 +66,17 @@ export default function ContentApp() {
           }
         />
       )}
-    </>
+    </ThemeProvider>
   );
+
+  // If we have a shadow root, we need to use the cache provider
+  if (shadowRoot) {
+    return (
+      <ShadowRootCacheProvider shadowRoot={shadowRoot}>
+        {AppContent}
+      </ShadowRootCacheProvider>
+    );
+  }
+
+  return AppContent;
 }
