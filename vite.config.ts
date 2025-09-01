@@ -11,11 +11,20 @@ export default defineConfig({
         content: "src/content.tsx"
       },
       output: {
-        entryFileNames: "content.js"
+        entryFileNames: "content.js",
+        // Ensure CSS is inlined into the JS bundle for Shadow DOM injection
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name?.endsWith(".css")) {
+            return "content.css";
+          }
+          return "[name].[ext]";
+        }
       }
     },
     outDir: "dist",
     emptyOutDir: true,
-    sourcemap: false
+    sourcemap: false,
+    // Ensure CSS is processed and can be imported
+    cssCodeSplit: false
   }
 });

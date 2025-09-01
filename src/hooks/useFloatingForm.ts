@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Position } from "../utils/types";
+import type { Position, EnhancedPosition } from "../utils/types";
 import { calculateFormPosition } from "../utils/positioning";
-import { useWindowResize } from "./useWindowResize";
-import { useDraggable } from "./useDraggable";
+import { useFormWindowResize } from "./useFormWindowResize";
+import { useFormDraggable } from "./useFormDraggable";
 
 interface UseFloatingFormReturn {
-  formPosition: Position;
+  formPosition: EnhancedPosition;
   isDragging: boolean;
   handleFormDragStart: (e: React.MouseEvent) => void;
   formRef: React.RefObject<HTMLDivElement | null>;
@@ -18,7 +18,10 @@ export function useFloatingForm(
   buttonPosition: Position,
   isVisible: boolean
 ): UseFloatingFormReturn {
-  const [formPosition, setFormPosition] = useState<Position>({ x: 0, y: 0 });
+  const [formPosition, setFormPosition] = useState<EnhancedPosition>({
+    x: 0,
+    y: 0
+  });
   const formRef = useRef<HTMLDivElement>(null);
 
   // Calculate initial form position when it becomes visible
@@ -33,7 +36,7 @@ export function useFloatingForm(
   }, [isVisible, buttonPosition.x, buttonPosition.y]);
 
   // Handle window resize for form
-  useWindowResize(setFormPosition);
+  useFormWindowResize(setFormPosition);
 
   // Callback to update contrast border after dragging (if needed in future)
   const handleFormDragEnd = useCallback(() => {
@@ -42,10 +45,9 @@ export function useFloatingForm(
   }, []);
 
   // Handle form dragging
-  const { handleDragStart, isDragging } = useDraggable(
+  const { handleDragStart, isDragging } = useFormDraggable(
     formPosition,
     setFormPosition,
-    () => {}, // No click action for form
     handleFormDragEnd
   );
 

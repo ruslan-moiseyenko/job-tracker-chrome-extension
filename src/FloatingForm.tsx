@@ -1,10 +1,6 @@
 import React from "react";
 import { UI_CONSTANTS } from "./constants/ui";
 import { COLORS, SHADOWS } from "./constants/colors";
-import {
-  applyFormMinimalProtection,
-  applyInputMinimalProtection
-} from "./utils/cssProtection";
 
 interface FloatingFormProps {
   onCancel: () => void;
@@ -18,102 +14,58 @@ export default function FloatingForm({
   style
 }: FloatingFormProps) {
   const formRef = React.useRef<HTMLDivElement>(null);
-  const nameInputRef = React.useRef<HTMLInputElement>(null);
-  const surnameInputRef = React.useRef<HTMLInputElement>(null);
+  const [name, setName] = React.useState("");
+  const [surname, setSurname] = React.useState("");
 
-  // Apply protective CSS after component mounts
-  React.useEffect(() => {
-    if (formRef.current) {
-      const formElement = formRef.current;
-      applyFormMinimalProtection(formElement);
-      const nameInput = formElement.querySelector(
-        "input[placeholder='Name']"
-      ) as HTMLInputElement;
-      if (nameInput) {
-        applyInputMinimalProtection(nameInput);
-      }
-      const surnameInput = formElement.querySelector(
-        "input[placeholder='Surname']"
-      ) as HTMLInputElement;
-      if (surnameInput) {
-        applyInputMinimalProtection(surnameInput);
-      }
-    }
-  }, []);
-
-  const inputStyle: React.CSSProperties = {
-    padding: "8px",
-    borderRadius: "4px",
-    border: `1px solid ${COLORS.INPUT_BORDER}`,
-    outline: "none",
-    fontSize: "14px",
-    fontFamily: "system-ui, -apple-system, sans-serif",
-    color: COLORS.TEXT_PRIMARY,
-    backgroundColor: COLORS.WHITE,
-    transition: "border-color 0.2s ease-in-out",
-    width: "100%",
-    boxSizing: "border-box"
-  };
-
-  const buttonBaseStyle: React.CSSProperties = {
-    padding: "4px 16px",
-    borderRadius: "4px",
-    border: "none",
-    fontSize: "14px",
-    cursor: "pointer",
-    fontFamily: "system-ui, -apple-system, sans-serif",
-    transition: "background-color 0.2s ease-in-out",
-    boxSizing: "border-box"
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Form submitted:", { name, surname });
+    onCancel(); // Close form for now
   };
 
   return (
     <div
       ref={formRef}
+      className="job-tracker-form fixed pointer-events-auto"
       style={{
         position: "fixed",
         zIndex: UI_CONSTANTS.Z_INDEX,
         pointerEvents: "auto",
-        bottom: "80px",
-        right: "20px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px",
-        backgroundColor: COLORS.BACKGROUND_PRIMARY,
+        backgroundColor: "white",
+        borderRadius: "8px",
         boxShadow: SHADOWS.FORM,
-        borderRadius: "12px",
-        padding: "0",
-        minWidth: `${UI_CONSTANTS.FORM_WIDTH}px`,
-        maxWidth: "300px",
-        width: "fit-content",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-        border: `1px solid ${COLORS.GRAY_200}`,
+        minWidth: "300px",
         ...style
       }}
     >
-      {/* Drag Handle Header */}
+      {/* Drag Handle */}
       <div
         style={{
           padding: "12px 20px",
-          backgroundColor: COLORS.GRAY_100,
-          borderTopLeftRadius: "12px",
-          borderTopRightRadius: "12px",
+          borderBottom: `1px solid ${COLORS.INPUT_BORDER}`,
           cursor: "move",
-          userSelect: "none",
-          fontSize: "14px",
-          fontWeight: "500",
-          color: COLORS.TEXT_SECONDARY,
-          borderBottom: `1px solid ${COLORS.GRAY_200}`,
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
-          justifyContent: "space-between"
+          backgroundColor: "#f8fafc"
         }}
         onMouseDown={onDrag}
       >
-        <span>Add Contact</span>
+        <h3
+          style={{
+            margin: "0",
+            fontSize: "16px",
+            fontWeight: "600",
+            color: "#1f2937"
+          }}
+        >
+          Job Application
+        </h3>
         <span
           style={{
+            cursor: "grab",
             fontSize: "18px",
-            color: COLORS.GRAY_400,
+            color: "#9ca3af",
             lineHeight: "1"
           }}
         >
@@ -122,80 +74,46 @@ export default function FloatingForm({
       </div>
 
       {/* Form Content */}
-      <div
-        style={{
-          padding: "20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px"
-        }}
-      >
-        <input
-          ref={nameInputRef}
-          style={inputStyle}
-          type="text"
-          placeholder="Name"
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = COLORS.INPUT_BORDER_FOCUS;
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = COLORS.INPUT_BORDER;
-          }}
-        />
-        <input
-          ref={surnameInputRef}
-          style={inputStyle}
-          type="text"
-          placeholder="Surname"
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = COLORS.INPUT_BORDER_FOCUS;
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = COLORS.INPUT_BORDER;
-          }}
-        />
+      <form onSubmit={handleSubmit}>
         <div
           style={{
+            padding: "20px",
             display: "flex",
-            gap: "8px",
-            justifyContent: "flex-end"
+            flexDirection: "column",
+            gap: "12px"
           }}
         >
-          <button
-            style={{
-              ...buttonBaseStyle,
-              backgroundColor: COLORS.BUTTON_CANCEL_BG,
-              color: COLORS.BUTTON_CANCEL_TEXT
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor =
-                COLORS.BUTTON_CANCEL_BG_HOVER;
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = COLORS.BUTTON_CANCEL_BG;
-            }}
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-          <button
-            style={{
-              ...buttonBaseStyle,
-              backgroundColor: COLORS.BUTTON_SUBMIT_BG,
-              color: COLORS.BUTTON_SUBMIT_TEXT
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor =
-                COLORS.BUTTON_SUBMIT_BG_HOVER;
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = COLORS.BUTTON_SUBMIT_BG;
-            }}
-          >
-            Submit
-          </button>
+          <input
+            className="job-tracker-input"
+            type="text"
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            className="job-tracker-input"
+            type="text"
+            placeholder="Surname"
+            value={surname}
+            onChange={(e) => setSurname(e.target.value)}
+          />
+          <div className="job-tracker-form-buttons">
+            <button
+              type="button"
+              className="job-tracker-form-button job-tracker-form-button--secondary"
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="job-tracker-form-button job-tracker-form-button--primary"
+            >
+              Submit
+            </button>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

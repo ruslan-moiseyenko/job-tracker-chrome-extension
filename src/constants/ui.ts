@@ -12,5 +12,5 @@ export const UI_CONSTANTS = {
 
 // Position-related constants
 export const POSITION_CONSTANTS = {
-  INITIAL_OFFSET: 88 // BUTTON_SIZE + MARGIN + padding
+  INITIAL_OFFSET: 106 // BUTTON_SIZE (56) + MARGIN (50) = 106
 } as const;

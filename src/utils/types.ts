@@ -3,6 +3,12 @@ export interface Position {
   y: number;
 }
 
+export interface EnhancedPosition extends Position {
+  useRightBottom?: boolean;
+  right?: number;
+  bottom?: number;
+}
+
 export interface DragState {
   isDragging: boolean;
   startPosition: Position;

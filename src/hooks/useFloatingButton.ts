@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import type { Position } from "../utils/types";
 import {
   getInitialPosition,
@@ -25,14 +25,17 @@ interface UseFloatingButtonReturn {
  */
 export function useFloatingButton(): UseFloatingButtonReturn {
   const [showForm, setShowForm] = useState(false);
-  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+  // Initialize with correct position immediately to avoid animation from (0,0)
+  const [position, setPosition] = useState<Position>(() =>
+    getInitialPosition()
+  );
   const buttonRef = useRef<HTMLDivElement>(null);
 
-  // Initialize position
-  useEffect(() => {
-    const initialPosition = getInitialPosition();
-    setPosition(initialPosition);
-  }, []);
+  // No longer need useEffect for initial position since it's calculated immediately
+  // useEffect(() => {
+  //   const initialPosition = getInitialPosition();
+  //   setPosition(initialPosition);
+  // }, []);
 
   // Handle window resize
   useWindowResize(setPosition);

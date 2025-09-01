@@ -1,12 +1,13 @@
 // Hooks
 export { useFloatingButton } from "./hooks/useFloatingButton";
 export { useDraggable } from "./hooks/useDraggable";
+export { useFormDraggable } from "./hooks/useFormDraggable";
 export { useWindowResize } from "./hooks/useWindowResize";
+export { useFormWindowResize } from "./hooks/useFormWindowResize";
 
 // Utils
 export * from "./utils/positioning";
 export * from "./utils/types";
-export * from "./utils/cssProtection";
 
 // Constants
 export { UI_CONSTANTS, POSITION_CONSTANTS } from "./constants/ui";

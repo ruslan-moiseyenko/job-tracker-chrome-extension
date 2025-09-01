@@ -1,4 +1,4 @@
-import type { Position, ViewportDimensions } from "./types";
+import type { Position, ViewportDimensions, EnhancedPosition } from "./types";
 import { UI_CONSTANTS } from "../constants/ui";
 
 /**
@@ -42,15 +42,37 @@ export function constrainPosition(
 }
 
 /**
+ * Constrains form position within viewport boundaries
+ */
+export function constrainFormPosition(
+  x: number,
+  y: number,
+  viewport?: ViewportDimensions,
+  inputCount?: number
+): Position {
+  const viewportWidth = viewport?.width ?? window.innerWidth;
+  const viewportHeight = viewport?.height ?? window.innerHeight;
+  const formHeight = calculateFormHeight(inputCount);
+
+  const maxX = viewportWidth - UI_CONSTANTS.FORM_WIDTH - UI_CONSTANTS.MARGIN;
+  const maxY = viewportHeight - formHeight - UI_CONSTANTS.MARGIN;
+
+  return {
+    x: Math.max(UI_CONSTANTS.MARGIN, Math.min(x, maxX)),
+    y: Math.max(UI_CONSTANTS.MARGIN, Math.min(y, maxY))
+  };
+}
+
+/**
  * Calculate optimal form position based on button position and available space
- * Improved version with better edge case handling
+ * Returns position with right/bottom coordinates for better fixed positioning
  */
 export function calculateFormPosition(
   buttonX: number,
   buttonY: number,
   viewport?: ViewportDimensions,
   inputCount?: number
-): Position {
+): EnhancedPosition {
   const viewportWidth = viewport?.width ?? window.innerWidth;
   const viewportHeight = viewport?.height ?? window.innerHeight;
 
@@ -117,6 +139,22 @@ export function calculateFormPosition(
     UI_CONSTANTS.MARGIN,
     Math.min(formY, viewportHeight - formHeight - UI_CONSTANTS.MARGIN)
   );
+
+  // Determine if we should use right/bottom positioning for better stability
+  // Use right/bottom when form is in the bottom-right quadrant
+  const centerX = viewportWidth / 2;
+  const centerY = viewportHeight / 2;
+  const useRightBottom = formX > centerX && formY > centerY;
+
+  if (useRightBottom) {
+    return {
+      x: formX,
+      y: formY,
+      useRightBottom: true,
+      right: viewportWidth - formX - UI_CONSTANTS.FORM_WIDTH,
+      bottom: viewportHeight - formY - formHeight
+    };
+  }
 
   return { x: formX, y: formY };
 }
