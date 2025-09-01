@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS Conflict Test Page</title>
+  <style>
+    /* Aggressive CSS that would break the extension without protection */
+
+    /* SVG conflicts - like the one in your screenshot */
+    svg {
+      width: 0 !important;
+      height: 0 !important;
+      display: none !important;
+      opacity: 0 !important;
+    }
+
+    svg[width] {
+      width: 10px !important;
+    }
+
+    svg[height] {
+      height: 10px !important;
+    }
+
+    /* Button conflicts */
+    div {
+      background: red !important;
+      color: yellow !important;
+      border: 10px solid green !important;
+      font-size: 50px !important;
+      padding: 100px !important;
+      margin: 50px !important;
+    }
+
+    /* Input conflicts */
+    input {
+      background: black !important;
+      color: white !important;
+      border: 5px solid purple !important;
+      border-radius: 0 !important;
+      padding: 20px !important;
+      font-size: 30px !important;
+      width: 50px !important;
+    }
+
+    /* Form conflicts */
+    form,
+    div[style*="flex"] {
+      background: orange !important;
+      padding: 50px !important;
+      border: 20px dotted blue !important;
+    }
+
+    /* Typography conflicts */
+    * {
+      font-family: "Comic Sans MS" !important;
+      font-size: 40px !important;
+      line-height: 3 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 10px !important;
+    }
+
+    /* Box model conflicts */
+    * {
+      box-sizing: content-box !important;
+      margin: 25px !important;
+      padding: 25px !important;
+    }
+
+    body {
+      background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .content {
+      max-width: 800px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .warning {
+      background: #ff6b6b;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .test-info {
+      background: #4ecdc4;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .expected-behavior {
+      background: #96ceb4;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="content">
+    <h1>🧪 Chrome Extension CSS Conflict Test</h1>
+
+    <div class="warning">
+      ⚠️ WARNING: This page has EXTREME CSS conflicts designed to break extension components!
+    </div>
+
+    <div class="test-info">
+      <h2>🎯 What This Page Tests:</h2>
+      <ul>
+        <li><strong>SVG Issues:</strong> Width/height set to 0, display none</li>
+        <li><strong>Button Styling:</strong> Aggressive background, padding, margin overrides</li>
+        <li><strong>Input Conflicts:</strong> Extreme styling that would break form inputs</li>
+        <li><strong>Typography:</strong> Font family, size, and spacing conflicts</li>
+        <li><strong>Box Model:</strong> Margin, padding, and box-sizing overrides</li>
+      </ul>
+    </div>
+
+    <div class="expected-behavior">
+      <h2>✅ Expected Behavior with CSS Protection:</h2>
+      <ul>
+        <li><strong>Floating Button:</strong> Should appear as a blue circle with white + icon</li>
+        <li><strong>SVG Icon:</strong> Should be 28x28px and clearly visible (not 0x0 or hidden)</li>
+        <li><strong>Form:</strong> Should open with clean white background and proper styling</li>
+        <li><strong>Inputs:</strong> Should have normal border, padding, and be fully usable</li>
+        <li><strong>Positioning:</strong> Should respect viewport boundaries and not overlap edges</li>
+      </ul>
+    </div>
+
+    <div style="margin-top: 30px; text-align: center; opacity: 0.8;">
+      <p>🔧 <strong>Load your Chrome extension and test it on this page!</strong></p>
+      <p>If everything works correctly, your CSS protection system is working! 🎉</p>
+    </div>
+
+    <div style="margin-top: 50px; font-size: 14px; opacity: 0.6; text-align: center;">
+      <p>This test simulates websites with aggressive CSS that commonly break Chrome extensions.<br>
+        Your extension should work perfectly despite all the conflicting styles on this page.</p>
+    </div>
+  </div>
+</body>
+
+</html>

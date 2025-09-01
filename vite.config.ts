@@ -4,5 +4,18 @@ import tailwindcss from "@tailwindcss/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()]
+  plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      input: {
+        content: "src/content.tsx"
+      },
+      output: {
+        entryFileNames: "content.js"
+      }
+    },
+    outDir: "dist",
+    emptyOutDir: true,
+    sourcemap: false
+  }
 });

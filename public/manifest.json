@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "version": "1.0.0",
+  "name": "Job Tracker",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {},
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "permissions": [
+    "tabs"
+  ]
+}
