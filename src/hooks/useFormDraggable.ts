@@ -1,10 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Position, EnhancedPosition } from "../utils/types";
-import {
-  constrainFormPosition,
-  hasMovedFarEnough,
-  calculateFormHeight
-} from "../utils/positioning";
+import { constrainFormPosition, hasMovedFarEnough, calculateFormHeight } from "../utils/positioning";
 import { UI_CONSTANTS } from "../constants/ui";
 
 interface UseFormDraggableReturn {
@@ -15,13 +11,7 @@ interface UseFormDraggableReturn {
 /**
  * Custom hook to handle dragging functionality specifically for forms
  */
-export function useFormDraggable(
-  position: EnhancedPosition,
-  setPosition: (
-    updater: (currentPos: EnhancedPosition) => EnhancedPosition
-  ) => void,
-  onDragEnd?: () => void
-): UseFormDraggableReturn {
+export function useFormDraggable(position: EnhancedPosition, setPosition: (updater: (currentPos: EnhancedPosition) => EnhancedPosition) => void, onDragEnd?: () => void): UseFormDraggableReturn {
   const [isDragging, setIsDragging] = useState(false);
   const offset = useRef<Position>({ x: 0, y: 0 });
   const dragStartPos = useRef<Position>({ x: 0, y: 0 });
@@ -40,7 +30,11 @@ export function useFormDraggable(
         y: e.clientY - position.y
       };
 
-      document.body.style.userSelect = "none";
+      // Prevent text selection on the main document using various prefixes
+      document.body.style.setProperty("user-select", "none");
+      document.body.style.setProperty("-webkit-user-select", "none");
+      document.body.style.setProperty("-moz-user-select", "none");
+      document.body.style.setProperty("-ms-user-select", "none");
     },
     [position.x, position.y]
   );
@@ -64,7 +58,7 @@ export function useFormDraggable(
       const constrainedPos = constrainFormPosition(newX, newY);
 
       // Update position with smart positioning method
-      setPosition((currentPos) => {
+      setPosition(currentPos => {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
         const formHeight = calculateFormHeight();
@@ -92,10 +86,14 @@ export function useFormDraggable(
 
     function onMouseUp() {
       setIsDragging(false);
-      document.body.style.userSelect = "";
+      // Restore text selection on the main document
+      document.body.style.removeProperty("user-select");
+      document.body.style.removeProperty("-webkit-user-select");
+      document.body.style.removeProperty("-moz-user-select");
+      document.body.style.removeProperty("-ms-user-select");
 
       // After drag ends, recalculate optimal positioning method
-      setPosition((currentPos) => {
+      setPosition(currentPos => {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
         const formHeight = calculateFormHeight();
@@ -103,8 +101,7 @@ export function useFormDraggable(
         // Determine optimal positioning method based on final position
         const centerX = viewportWidth / 2;
         const centerY = viewportHeight / 2;
-        const shouldUseRightBottom =
-          currentPos.x > centerX && currentPos.y > centerY;
+        const shouldUseRightBottom = currentPos.x > centerX && currentPos.y > centerY;
 
         if (shouldUseRightBottom) {
           return {

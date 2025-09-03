@@ -12,12 +12,7 @@ interface UseDraggableReturn {
 /**
  * Custom hook to handle dragging functionality with click distinction
  */
-export function useDraggable(
-  position: Position,
-  setPosition: (updater: (currentPos: Position) => Position) => void,
-  onValidClick: () => void,
-  onDragEnd?: () => void
-): UseDraggableReturn {
+export function useDraggable(position: Position, setPosition: (updater: (currentPos: Position) => Position) => void, onValidClick: () => void, onDragEnd?: () => void): UseDraggableReturn {
   const [isDragging, setIsDragging] = useState(false);
   const offset = useRef<Position>({ x: 0, y: 0 });
   const dragStartPos = useRef<Position>({ x: 0, y: 0 });
@@ -32,7 +27,11 @@ export function useDraggable(
         x: e.clientX - position.x,
         y: e.clientY - position.y
       };
-      document.body.style.userSelect = "none";
+      // Prevent text selection on the main document using various prefixes
+      document.body.style.setProperty("user-select", "none");
+      document.body.style.setProperty("-webkit-user-select", "none");
+      document.body.style.setProperty("-moz-user-select", "none");
+      document.body.style.setProperty("-ms-user-select", "none");
     },
     [position.x, position.y]
   );
@@ -59,16 +58,17 @@ export function useDraggable(
       }
 
       // Update position with constraints
-      const newPos = constrainPosition(
-        e.clientX - offset.current.x,
-        e.clientY - offset.current.y
-      );
+      const newPos = constrainPosition(e.clientX - offset.current.x, e.clientY - offset.current.y);
       setPosition(() => newPos);
     }
 
     function onMouseUp() {
       setIsDragging(false);
-      document.body.style.userSelect = "";
+      // Restore text selection on the main document
+      document.body.style.removeProperty("user-select");
+      document.body.style.removeProperty("-webkit-user-select");
+      document.body.style.removeProperty("-moz-user-select");
+      document.body.style.removeProperty("-ms-user-select");
 
       // Trigger contrast border update if callback provided
       if (onDragEnd) {

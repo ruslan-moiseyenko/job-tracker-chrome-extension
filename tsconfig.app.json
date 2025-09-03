@@ -16,6 +16,18 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@emotion/react",
 
+    /* TypeScript plugins for styled-components */
+    "plugins": [
+      {
+        "name": "typescript-styled-plugin",
+        "validate": false,
+        "lint": {
+          "validProperties": []
+        },
+        "tags": ["styled", "css", "injectGlobal", "keyframes"]
+      }
+    ],
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

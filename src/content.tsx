@@ -20,7 +20,7 @@ function createShadowRoot() {
       left: "0",
       width: "100vw",
       height: "100vh",
-      pointerEvents: "none",
+      pointerEvents: "none", // Host doesn't receive events
       zIndex: "2147483647"
     });
 
@@ -35,7 +35,7 @@ function createShadowRoot() {
   Object.assign(reactContainer.style, {
     width: "100%",
     height: "100%",
-    pointerEvents: "none"
+    pointerEvents: "none" // Let events pass through, specific elements will capture
   });
   shadowRoot.appendChild(reactContainer);
 

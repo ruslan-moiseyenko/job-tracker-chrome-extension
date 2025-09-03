@@ -16,6 +16,10 @@ export const FloatingButtonContainer = styled.button`
   align-items: center;
   justify-content: center;
   outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 
   &:hover {
     box-shadow: ${({ theme }) => theme.shadows.BUTTON_HOVER};
@@ -23,6 +27,13 @@ export const FloatingButtonContainer = styled.button`
 
   &:focus {
     outline: none;
+  }
+
+  &:active {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
   }
 `;
 

@@ -2,10 +2,14 @@
   "manifest_version": 3,
   "version": "1.0.0",
   "name": "Job Tracker",
+  "description": "Track job applications with GraphQL integration and cookie authentication",
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "action": {},
+  "action": {
+    "default_title": "Job Tracker"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -13,13 +17,28 @@
       ],
       "js": [
         "content.js"
-      ]
+      ],
+      "run_at": "document_end"
     }
   ],
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "https://localhost:*/*",
+    "http://localhost:*/*"
   ],
   "permissions": [
-    "tabs"
+    "tabs",
+    "storage",
+    "cookies"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ]
 }

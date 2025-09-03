@@ -1,0 +1,33 @@
+{
+  "printWidth": 120,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": false,
+  "quoteProps": "as-needed",
+  "trailingComma": "none",
+  "bracketSpacing": true,
+  "bracketSameLine": false,
+  "arrowParens": "avoid",
+  "overrides": [
+    {
+      "files": [
+        "**/*.{ts,tsx}"
+      ],
+      "options": {
+        "parser": "typescript",
+        "printWidth": 200
+      }
+    },
+    {
+      "files": [
+        "**/styles/*.ts",
+        "**/components/**/*.ts"
+      ],
+      "options": {
+        "printWidth": 300,
+        "proseWrap": "never"
+      }
+    }
+  ]
+}

@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  FloatingButtonContainer,
-  ButtonIcon
-} from "./styles/FloatingButton.styles";
+import { FloatingButtonContainer, ButtonIcon } from "./styles/FloatingButton.styles";
 
 interface FloatingButtonProps {
   onClick: React.MouseEventHandler<HTMLButtonElement>;
@@ -12,13 +9,7 @@ interface FloatingButtonProps {
   isDragging?: boolean;
 }
 
-const FloatingButton: React.FC<FloatingButtonProps> = ({
-  onClick,
-  onDrag,
-  style,
-  buttonRef: externalButtonRef,
-  isDragging = false
-}) => {
+const FloatingButton: React.FC<FloatingButtonProps> = ({ onClick, onDrag, style, buttonRef: externalButtonRef, isDragging = false }) => {
   const internalButtonRef = React.useRef<HTMLButtonElement>(null);
   const buttonRef = externalButtonRef || internalButtonRef;
 
@@ -27,7 +18,8 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
       ref={buttonRef}
       onClick={onClick}
       onMouseDown={onDrag}
-      title="Open form"
+      title="Add position to Job Tracker"
+      data-interactive
       style={{
         bottom: "20px",
         right: "20px",

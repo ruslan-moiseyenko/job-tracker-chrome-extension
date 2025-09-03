@@ -31,6 +31,23 @@ export const GlobalStyles = () => {
           z-index: ${theme.zIndex.max} !important;
         }
 
+        /* Ensure our interactive elements can receive pointer events */
+        :host button,
+        :host form,
+        :host input,
+        :host [data-interactive] {
+          pointer-events: auto !important;
+        }
+
+        /* Prevent text selection during drag operations */
+        :host [data-interactive]:active,
+        :host [data-interactive] *:active {
+          user-select: none !important;
+          -webkit-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+        }
+
         /* Base reset */
         html {
           line-height: 1.5;

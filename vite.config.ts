@@ -14,12 +14,18 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        content: "src/content.tsx"
+        content: "src/content.tsx",
+        background: "src/background/service-worker.ts"
       },
       output: {
-        entryFileNames: "content.js",
+        entryFileNames: chunkInfo => {
+          if (chunkInfo.name === "background") {
+            return "background.js";
+          }
+          return "content.js";
+        },
         // Ensure CSS is inlined into the JS bundle for Shadow DOM injection
-        assetFileNames: (assetInfo) => {
+        assetFileNames: assetInfo => {
           if (assetInfo.names?.[0]?.endsWith(".css")) {
             return "content.css";
           }
@@ -29,7 +35,7 @@ export default defineConfig({
     },
     outDir: "dist",
     emptyOutDir: true,
-    sourcemap: false,
+    sourcemap: true, // Enable sourcemaps for better debugging
     // Ensure CSS is processed and can be imported
     cssCodeSplit: false
   }
