@@ -5,9 +5,21 @@ import { useFloatingForm } from "./hooks/useFloatingForm";
 import { ThemeProvider } from "./styles/ThemeProvider";
 import { GlobalStyles } from "./styles/GlobalStyles";
 import { ShadowRootCacheProvider } from "./styles/ShadowRootCacheProvider";
+import { useEffect } from "react";
 
 interface ContentAppProps {
   shadowRoot?: ShadowRoot;
+}
+
+// Global window interface extension
+declare global {
+  interface Window {
+    jobTrackerExtension?: {
+      restoreButton: () => void;
+      showButton: () => boolean | null;
+      hideButton: () => void;
+    };
+  }
 }
 
 export default function ContentApp({ shadowRoot }: ContentAppProps) {
@@ -15,8 +27,11 @@ export default function ContentApp({ shadowRoot }: ContentAppProps) {
     position,
     showForm,
     setShowForm,
+    showButton,
+    setShowButton,
     handleDragStart,
     handleButtonClick,
+    restoreButton,
     buttonRef,
     isDragging
   } = useFloatingButton();
@@ -26,10 +41,47 @@ export default function ContentApp({ shadowRoot }: ContentAppProps) {
     showForm
   );
 
+  // Expose restoreButton function globally for console access
+  useEffect(() => {
+    // Create a function to hide button by using the extension icon
+    const hideButton = () => {
+      // Since we removed the close button, we'll just inform user to use extension icon
+      console.info(
+        "Use the extension icon in the browser toolbar to toggle button visibility"
+      );
+    };
+
+    window.jobTrackerExtension = {
+      restoreButton,
+      showButton: () => showButton,
+      hideButton
+    };
+
+    // Listen for messages from the service worker (extension icon toggle)
+    const handleMessage = (message: { type: string; showButton?: boolean }) => {
+      if (
+        message.type === "TOGGLE_FLOATING_BUTTON" &&
+        message.showButton !== undefined
+      ) {
+        setShowButton(message.showButton);
+        if (message.showButton) {
+          restoreButton();
+        }
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+
+    return () => {
+      delete window.jobTrackerExtension;
+      chrome.runtime.onMessage.removeListener(handleMessage);
+    };
+  }, [restoreButton, showButton, setShowButton]);
+
   const AppContent = (
     <ThemeProvider>
       <GlobalStyles />
-      {!showForm && (
+      {!showForm && showButton === true && (
         <FloatingButton
           onClick={handleButtonClick}
           onDrag={handleDragStart}

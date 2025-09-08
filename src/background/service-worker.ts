@@ -1,16 +1,26 @@
 // Clean Service Worker with lightweight GraphQL client
 // No Apollo dependencies - optimized for Chrome Extensions
 
+import { COLORS } from "../constants/colors.js";
+
 // Auth state monitoring service
 class AuthStateMonitor {
   static async init() {
     // Monitor cookie changes for reactive auth state
     chrome.cookies.onChanged.addListener(async changeInfo => {
       // Monitor auth-related cookies (adjust cookie names to match your backend)
-      const authCookieNames = ["auth_token", "jwt", "session", "token", "access_token", "refresh_token"];
+      const authCookieNames = [
+        "auth_token",
+        "jwt",
+        "session",
+        "token",
+        "access_token",
+        "refresh_token"
+      ];
 
       if (authCookieNames.includes(changeInfo.cookie.name)) {
-        const isAuthenticated = !changeInfo.removed && changeInfo.cookie.httpOnly;
+        const isAuthenticated =
+          !changeInfo.removed && changeInfo.cookie.httpOnly;
 
         // Update auth state in storage
         await chrome.storage.local.set({
@@ -24,7 +34,11 @@ class AuthStateMonitor {
           isAuthenticated
         });
 
-        console.log(`🔐 Auth state changed: ${isAuthenticated ? "logged in" : "logged out"}`);
+        console.log(
+          `🔐 Auth state changed: ${
+            isAuthenticated ? "logged in" : "logged out"
+          }`
+        );
       }
     });
   }
@@ -36,7 +50,17 @@ class AuthStateMonitor {
         url: API_ENDPOINT.replace("/graphql", "") // Remove /graphql suffix
       });
 
-      const authCookie = cookies.find(c => ["auth_token", "jwt", "session", "token", "access_token", "refresh_token"].includes(c.name) && c.httpOnly);
+      const authCookie = cookies.find(
+        c =>
+          [
+            "auth_token",
+            "jwt",
+            "session",
+            "token",
+            "access_token",
+            "refresh_token"
+          ].includes(c.name) && c.httpOnly
+      );
 
       const isAuthenticated = !!authCookie;
 
@@ -52,7 +76,10 @@ class AuthStateMonitor {
     }
   }
 
-  static async notifyAllContentScripts(message: { type: string; isAuthenticated?: boolean }) {
+  static async notifyAllContentScripts(message: {
+    type: string;
+    isAuthenticated?: boolean;
+  }) {
     const tabs = await chrome.tabs.query({});
     tabs.forEach(tab => {
       if (tab.id) {
@@ -68,12 +95,42 @@ class AuthStateMonitor {
 AuthStateMonitor.init();
 
 // Handle extension icon clicks
-chrome.action.onClicked.addListener(() => {
-  // Replace with your desired URL
-  const targetUrl = "https://example.com"; // Change this to your target page
+chrome.action.onClicked.addListener(async tab => {
+  if (!tab.id) return;
 
-  // Open the URL in a new tab
-  chrome.tabs.create({ url: targetUrl });
+  try {
+    // Get current button state for this tab
+    const storageKey = `showFloatingButton_${tab.id}`;
+    const result = await chrome.storage.local.get([storageKey]);
+    const currentState = result[storageKey] ?? true; // Default to true if not set
+    const newState = !currentState;
+
+    // Update storage
+    await chrome.storage.local.set({ [storageKey]: newState });
+
+    // Send message to content script to update the button state
+    chrome.tabs
+      .sendMessage(tab.id, {
+        type: "TOGGLE_FLOATING_BUTTON",
+        showButton: newState
+      })
+      .catch(() => {
+        // Ignore errors if content script is not ready
+      });
+
+    // Update extension badge to show current state
+    chrome.action.setBadgeText({
+      text: newState ? "" : "X",
+      tabId: tab.id
+    });
+
+    chrome.action.setBadgeBackgroundColor({
+      color: newState ? COLORS.SUCCESS : COLORS.ERROR,
+      tabId: tab.id
+    });
+  } catch (error) {
+    console.error("Failed to toggle floating button:", error);
+  }
 });
 
 // Service Worker lifecycle management
@@ -85,6 +142,37 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.runtime.onInstalled.addListener(() => {
   console.log("📦 Extension installed/updated");
   AuthStateMonitor.checkAuthStatus();
+});
+
+// Update badge when tab is activated to show current button state
+chrome.tabs.onActivated.addListener(async activeInfo => {
+  try {
+    const storageKey = `showFloatingButton_${activeInfo.tabId}`;
+    const result = await chrome.storage.local.get([storageKey]);
+    const isVisible = result[storageKey] ?? true;
+
+    chrome.action.setBadgeText({
+      text: isVisible ? "" : "X",
+      tabId: activeInfo.tabId
+    });
+
+    chrome.action.setBadgeBackgroundColor({
+      color: isVisible ? COLORS.SUCCESS : COLORS.ERROR,
+      tabId: activeInfo.tabId
+    });
+  } catch {
+    // Ignore errors
+  }
+});
+
+// Clean up storage when tabs are closed
+chrome.tabs.onRemoved.addListener(async tabId => {
+  try {
+    const storageKey = `showFloatingButton_${tabId}`;
+    await chrome.storage.local.remove(storageKey);
+  } catch {
+    // Ignore errors
+  }
 });
 
 // Keep service worker alive during active requests
@@ -145,34 +233,43 @@ const API_ENDPOINT = "http://localhost:4000/graphql"; // Fixed port typo (was 40
 const AUTH_ENDPOINT = "https://your-api-domain.com/auth";
 
 // Main message handler
-chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: unknown) => void) => {
-  // Security check
-  if (!sender.tab) {
-    sendResponse({ success: false, error: "Invalid sender" });
-    return false;
+chrome.runtime.onMessage.addListener(
+  (
+    message: ExtensionMessage,
+    sender: chrome.runtime.MessageSender,
+    sendResponse: (response: unknown) => void
+  ) => {
+    // Security check
+    if (!sender.tab) {
+      sendResponse({ success: false, error: "Invalid sender" });
+      return false;
+    }
+
+    switch (message.action) {
+      case "graphqlRequest":
+        handleGraphQLRequest(message, sendResponse);
+        break;
+
+      case "authenticate":
+        handleAuthentication(message, sendResponse);
+        break;
+
+      case "invalidateCache":
+        handleCacheInvalidation(message, sendResponse);
+        break;
+
+      default:
+        sendResponse({ success: false, error: "Unknown action" });
+    }
+
+    return true; // Async response
   }
+);
 
-  switch (message.action) {
-    case "graphqlRequest":
-      handleGraphQLRequest(message, sendResponse);
-      break;
-
-    case "authenticate":
-      handleAuthentication(message, sendResponse);
-      break;
-
-    case "invalidateCache":
-      handleCacheInvalidation(message, sendResponse);
-      break;
-
-    default:
-      sendResponse({ success: false, error: "Unknown action" });
-  }
-
-  return true; // Async response
-});
-
-async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (response: unknown) => void) {
+async function handleGraphQLRequest(
+  message: GraphQLMessage,
+  sendResponse: (response: unknown) => void
+) {
   const requestId = message.requestId || generateRequestId();
 
   // MOCK MODE: Return fake data for development
@@ -204,7 +301,10 @@ async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (resp
 
       // Simulate network delay
       setTimeout(() => {
-        console.log(`✅ [${requestId}] Mock job application created:`, mockData);
+        console.log(
+          `✅ [${requestId}] Mock job application created:`,
+          mockData
+        );
         sendResponse({
           success: true,
           data: mockData,
@@ -251,7 +351,10 @@ async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (resp
 
     // Make GraphQL request
     console.log(`📤 [${requestId}] Making GraphQL request to:`, API_ENDPOINT);
-    console.log(`📤 [${requestId}] Query:`, message.query.substring(0, 100) + "...");
+    console.log(
+      `📤 [${requestId}] Query:`,
+      message.query.substring(0, 100) + "..."
+    );
     console.log(`📤 [${requestId}] Variables:`, message.variables);
 
     const response = await fetch(API_ENDPOINT, {
@@ -269,7 +372,9 @@ async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (resp
     });
 
     if (!response.ok) {
-      console.error(`❌ [${requestId}] HTTP Error ${response.status}: ${response.statusText}`);
+      console.error(
+        `❌ [${requestId}] HTTP Error ${response.status}: ${response.statusText}`
+      );
       console.error(`❌ [${requestId}] Response URL: ${response.url}`);
 
       // Enhanced HTTP error handling based on research
@@ -280,7 +385,9 @@ async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (resp
       }
 
       if (response.status === 401) {
-        console.log(`🔐 [${requestId}] Auth required, attempting token refresh`);
+        console.log(
+          `🔐 [${requestId}] Auth required, attempting token refresh`
+        );
 
         // Check if we still have auth cookies
         const hasAuthCookies = await AuthStateMonitor.checkAuthStatus();
@@ -303,7 +410,9 @@ async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (resp
       }
 
       if (response.status >= 500) {
-        throw new Error(`Server error (${response.status}) - please try again later`);
+        throw new Error(
+          `Server error (${response.status}) - please try again later`
+        );
       }
 
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -313,7 +422,11 @@ async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (resp
 
     // Cache successful responses
     if (message.useCache && result.data && !result.errors) {
-      await setCachedResponse(message, result.data, message.cacheTTL || 5 * 60 * 1000);
+      await setCachedResponse(
+        message,
+        result.data,
+        message.cacheTTL || 5 * 60 * 1000
+      );
     }
 
     console.log(`✅ [${requestId}] GraphQL success`);
@@ -331,7 +444,9 @@ async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (resp
     let errorMessage = "Unknown error";
     if (error instanceof Error) {
       if (error.message.includes("Failed to fetch")) {
-        errorMessage = `Network error: Cannot connect to ${API_ENDPOINT}. ` + `Check if your GraphQL server is running and CORS is configured for Chrome extensions.`;
+        errorMessage =
+          `Network error: Cannot connect to ${API_ENDPOINT}. ` +
+          `Check if your GraphQL server is running and CORS is configured for Chrome extensions.`;
       } else {
         errorMessage = error.message;
       }
@@ -352,7 +467,10 @@ async function handleGraphQLRequest(message: GraphQLMessage, sendResponse: (resp
 }
 
 // Authentication handler
-async function handleAuthentication(message: AuthMessage, sendResponse: (response: unknown) => void) {
+async function handleAuthentication(
+  message: AuthMessage,
+  sendResponse: (response: unknown) => void
+) {
   const requestId = message.requestId || generateRequestId();
 
   try {
@@ -399,7 +517,10 @@ async function handleAuthentication(message: AuthMessage, sendResponse: (respons
 }
 
 // Cache invalidation handler
-async function handleCacheInvalidation(message: CacheInvalidateMessage, sendResponse: (response: unknown) => void) {
+async function handleCacheInvalidation(
+  message: CacheInvalidateMessage,
+  sendResponse: (response: unknown) => void
+) {
   try {
     if (message.pattern) {
       await clearCacheByPattern(message.pattern);
@@ -419,7 +540,9 @@ async function handleCacheInvalidation(message: CacheInvalidateMessage, sendResp
 }
 
 // Cache utilities
-async function getCachedResponse<T>(message: GraphQLMessage): Promise<T | null> {
+async function getCachedResponse<T>(
+  message: GraphQLMessage
+): Promise<T | null> {
   try {
     const cacheKey = getCacheKey(message);
     const result = await chrome.storage.local.get(cacheKey);
@@ -441,7 +564,11 @@ async function getCachedResponse<T>(message: GraphQLMessage): Promise<T | null> 
   }
 }
 
-async function setCachedResponse<T>(message: GraphQLMessage, data: T, ttl: number): Promise<void> {
+async function setCachedResponse<T>(
+  message: GraphQLMessage,
+  data: T,
+  ttl: number
+): Promise<void> {
   try {
     const cacheKey = getCacheKey(message);
     const cacheEntry: CacheEntry<T> = {
@@ -466,7 +593,9 @@ function getCacheKey(message: GraphQLMessage): string {
 
 async function clearCacheByPattern(pattern: string): Promise<void> {
   const items = await chrome.storage.local.get();
-  const keysToRemove = Object.keys(items).filter(key => key.startsWith(CACHE_PREFIX) && key.includes(pattern));
+  const keysToRemove = Object.keys(items).filter(
+    key => key.startsWith(CACHE_PREFIX) && key.includes(pattern)
+  );
 
   if (keysToRemove.length > 0) {
     await chrome.storage.local.remove(keysToRemove);
@@ -475,7 +604,9 @@ async function clearCacheByPattern(pattern: string): Promise<void> {
 
 async function clearAllCache(): Promise<void> {
   const items = await chrome.storage.local.get();
-  const keysToRemove = Object.keys(items).filter(key => key.startsWith(CACHE_PREFIX));
+  const keysToRemove = Object.keys(items).filter(key =>
+    key.startsWith(CACHE_PREFIX)
+  );
 
   if (keysToRemove.length > 0) {
     await chrome.storage.local.remove(keysToRemove);
@@ -534,7 +665,11 @@ setInterval(async () => {
     const keysToRemove: string[] = [];
 
     Object.entries(items).forEach(([key, value]) => {
-      if (key.startsWith(CACHE_PREFIX) && typeof value === "object" && value !== null) {
+      if (
+        key.startsWith(CACHE_PREFIX) &&
+        typeof value === "object" &&
+        value !== null
+      ) {
         const cacheEntry = value as CacheEntry;
         if (now > cacheEntry.timestamp + cacheEntry.ttl) {
           keysToRemove.push(key);
