@@ -5,7 +5,8 @@ import styled from "@emotion/styled";
 import type { Theme } from "./theme";
 
 export const FormContainer = styled.div`
-  background: ${({ theme }: { theme: Theme }) => theme.colors.BACKGROUND_PRIMARY};
+  background: ${({ theme }: { theme: Theme }) =>
+    theme.colors.BACKGROUND_PRIMARY};
   border-radius: ${({ theme }: { theme: Theme }) => theme.borderRadius.md};
   box-shadow: ${({ theme }: { theme: Theme }) => theme.shadows.FORM};
   min-width: ${({ theme }: { theme: Theme }) => theme.sizes.form.minWidth};
@@ -27,7 +28,8 @@ export const DragHandle = styled.div`
   -ms-user-select: none;
   padding: ${({ theme }: { theme: Theme }) => theme.spacing.sm} 0;
   margin-bottom: ${({ theme }: { theme: Theme }) => theme.spacing.md};
-  border-bottom: 1px solid ${({ theme }: { theme: Theme }) => theme.colors.GRAY_200};
+  border-bottom: 1px solid
+    ${({ theme }: { theme: Theme }) => theme.colors.GRAY_200};
 
   &:active {
     cursor: grabbing;
@@ -50,7 +52,13 @@ export const AuthStatusIcon = styled.span<{ isAuthenticated: boolean }>`
   margin-left: ${({ theme }: { theme: Theme }) => theme.spacing.sm};
   font-size: 12px;
   opacity: 0.7;
-  color: ${({ theme, isAuthenticated }: { theme: Theme; isAuthenticated: boolean }) => (isAuthenticated ? theme.colors.SUCCESS : theme.colors.ERROR)};
+  color: ${({
+    theme,
+    isAuthenticated
+  }: {
+    theme: Theme;
+    isAuthenticated: boolean;
+  }) => (isAuthenticated ? theme.colors.SUCCESS : theme.colors.ERROR)};
 `;
 
 export const DragHandleIcon = styled.span`
@@ -60,9 +68,11 @@ export const DragHandleIcon = styled.span`
 `;
 
 export const WarningMessage = styled.div`
-  padding: ${({ theme }: { theme: Theme }) => theme.spacing.sm} ${({ theme }: { theme: Theme }) => theme.spacing.md};
+  padding: ${({ theme }: { theme: Theme }) => theme.spacing.sm}
+    ${({ theme }: { theme: Theme }) => theme.spacing.md};
   background-color: ${({ theme }: { theme: Theme }) => theme.colors.WARNING_BG};
-  border: 1px solid ${({ theme }: { theme: Theme }) => theme.colors.WARNING_BORDER};
+  border: 1px solid
+    ${({ theme }: { theme: Theme }) => theme.colors.WARNING_BORDER};
   border-radius: ${({ theme }: { theme: Theme }) => theme.borderRadius.sm};
   margin-bottom: ${({ theme }: { theme: Theme }) => theme.spacing.md};
   font-size: 12px;
@@ -85,16 +95,24 @@ export const ValidationError = styled.div`
 
 export const FormInput = styled.input`
   width: 100%;
-  padding: ${({ theme }: { theme: Theme }) => theme.spacing.sm} ${({ theme }: { theme: Theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }: { theme: Theme }) => theme.colors.INPUT_BORDER};
+  padding: ${({ theme }: { theme: Theme }) => theme.spacing.sm}
+    ${({ theme }: { theme: Theme }) => theme.spacing.md};
+  border: 1px solid
+    ${({ theme }: { theme: Theme }) => theme.colors.INPUT_BORDER};
   border-radius: ${({ theme }: { theme: Theme }) => theme.borderRadius.sm};
+  background-color: ${({ theme }: { theme: Theme }) =>
+    theme.colors.BACKGROUND_PRIMARY};
+  color: ${({ theme }: { theme: Theme }) => theme.colors.TEXT_PRIMARY};
   font-size: 14px;
   margin-bottom: ${({ theme }: { theme: Theme }) => theme.spacing.sm};
   font-family: inherit;
 
   &:focus {
     outline: none;
-    border-color: ${({ theme }: { theme: Theme }) => theme.colors.INPUT_BORDER_FOCUS};
+    border-color: ${({ theme }: { theme: Theme }) =>
+      theme.colors.INPUT_BORDER_FOCUS};
+    background-color: ${({ theme }: { theme: Theme }) =>
+      theme.colors.BACKGROUND_PRIMARY};
   }
 
   &::placeholder {
@@ -107,14 +125,23 @@ export const FormButtonContainer = styled.div`
   gap: ${({ theme }: { theme: Theme }) => theme.spacing.sm};
   justify-content: space-between;
   align-items: center;
-  background-color: ${({ theme }: { theme: Theme }) => theme.colors.BACKGROUND_SECONDARY};
-  border-radius: 0 0 ${({ theme }: { theme: Theme }) => theme.borderRadius.md} ${({ theme }: { theme: Theme }) => theme.borderRadius.md};
-  margin: ${({ theme }: { theme: Theme }) => theme.spacing.lg} - ${({ theme }: { theme: Theme }) => theme.spacing.lg} -${({ theme }: { theme: Theme }) => theme.spacing.lg} -${({ theme }: { theme: Theme }) => theme.spacing.lg};
-  padding: ${({ theme }: { theme: Theme }) => theme.spacing.md} ${({ theme }: { theme: Theme }) => theme.spacing.lg};
+  background-color: ${({ theme }: { theme: Theme }) =>
+    theme.colors.BACKGROUND_SECONDARY};
+  border-radius: 0 0 ${({ theme }: { theme: Theme }) => theme.borderRadius.md}
+    ${({ theme }: { theme: Theme }) => theme.borderRadius.md};
+  margin: -${({ theme }: { theme: Theme }) => theme.spacing.lg} -${({
+      theme
+    }: {
+      theme: Theme;
+    }) => theme.spacing.lg} -${({ theme }: { theme: Theme }) =>
+      theme.spacing.lg} -${({ theme }: { theme: Theme }) => theme.spacing.lg};
+  padding: ${({ theme }: { theme: Theme }) => theme.spacing.md}
+    ${({ theme }: { theme: Theme }) => theme.spacing.lg};
 `;
 
 export const FormButton = styled.button<{ variant: "primary" | "secondary" }>`
-  padding: ${({ theme }: { theme: Theme }) => theme.spacing.sm} ${({ theme }: { theme: Theme }) => theme.spacing.lg};
+  padding: ${({ theme }: { theme: Theme }) => theme.spacing.sm}
+    ${({ theme }: { theme: Theme }) => theme.spacing.lg};
   border: none;
   border-radius: ${({ theme }: { theme: Theme }) => theme.borderRadius.sm};
   font-size: 14px;

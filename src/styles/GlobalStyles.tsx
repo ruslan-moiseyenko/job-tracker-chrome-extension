@@ -85,7 +85,7 @@ export const GlobalStyles = () => {
           font-weight: inherit;
           line-height: inherit;
           color: ${theme.colors.GRAY_700};
-          background-color: ${theme.colors.WHITE};
+          background-color: ${theme.colors.BACKGROUND_PRIMARY};
           margin: 0;
           padding: 0;
           border: none;

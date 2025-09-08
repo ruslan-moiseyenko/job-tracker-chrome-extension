@@ -1,5 +1,5 @@
 {
-  "printWidth": 120,
+  "printWidth": 80,
   "tabWidth": 2,
   "useTabs": false,
   "semi": true,
@@ -8,26 +8,5 @@
   "trailingComma": "none",
   "bracketSpacing": true,
   "bracketSameLine": false,
-  "arrowParens": "avoid",
-  "overrides": [
-    {
-      "files": [
-        "**/*.{ts,tsx}"
-      ],
-      "options": {
-        "parser": "typescript",
-        "printWidth": 200
-      }
-    },
-    {
-      "files": [
-        "**/styles/*.ts",
-        "**/components/**/*.ts"
-      ],
-      "options": {
-        "printWidth": 300,
-        "proseWrap": "never"
-      }
-    }
-  ]
+  "arrowParens": "avoid"
 }

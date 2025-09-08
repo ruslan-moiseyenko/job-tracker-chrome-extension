@@ -14,3 +14,9 @@ export const UI_CONSTANTS = {
 export const POSITION_CONSTANTS = {
   INITIAL_OFFSET: 106 // BUTTON_SIZE (56) + MARGIN (50) = 106
 } as const;
+
+// FloatingButton positioning constants (in pixels)
+export const FLOATING_BUTTON_POSITION = {
+  BOTTOM: 150, // 150px from bottom
+  RIGHT: 50 // 50px from right
+} as const;

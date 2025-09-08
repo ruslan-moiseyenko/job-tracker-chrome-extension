@@ -1,9 +1,24 @@
 // Enhanced FloatingForm matching dashboard AddNewApplication functionality
 import React, { useState, useEffect, useCallback } from "react";
 import { JobTrackerAPI } from "../services/job-tracker-api";
-import { FormContainer, DragHandle, DragHandleTitle, DragHandleIcon, AuthStatusIcon, WarningMessage, ErrorMessage, FormInput, FormButtonContainer, FormButton } from "../styles/FloatingForm.styles";
-import { CompanyAutocomplete, StageSelect } from "../components/EnhancedFormComponents";
-import { useCachedCompanySearch, useGetStages, useCreateJobApplication } from "../hooks/useDashboardFeatures";
+import {
+  FormContainer,
+  DragHandle,
+  DragHandleTitle,
+  DragHandleIcon,
+  AuthStatusIcon,
+  WarningMessage,
+  ErrorMessage,
+  FormInput,
+  FormButtonContainer,
+  FormButton
+} from "../styles/FloatingForm.styles";
+import { CompanyAutocomplete, StageSelect } from "./FormComponents";
+import {
+  useCachedCompanySearch,
+  useGetStages,
+  useCreateJobApplication
+} from "../hooks/useDashboardFeatures";
 import { sanitizeInput } from "../utils/validation";
 import { BackgroundGraphQLClient } from "../utils/graphql-client";
 import { COLORS, SHADOWS } from "../constants/colors";
@@ -54,6 +69,8 @@ const TextArea = styled.textarea`
   border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
+  background-color: ${COLORS.BACKGROUND_PRIMARY};
+  color: ${COLORS.TEXT_PRIMARY};
   resize: vertical;
   transition: all 0.2s ease;
 
@@ -61,6 +78,11 @@ const TextArea = styled.textarea`
     outline: none;
     border-color: ${COLORS.INPUT_BORDER_FOCUS};
     box-shadow: ${SHADOWS.INPUT_FOCUS_PRIMARY};
+    background-color: ${COLORS.BACKGROUND_PRIMARY};
+  }
+
+  &::placeholder {
+    color: ${COLORS.GRAY_400};
   }
 `;
 
@@ -91,7 +113,11 @@ interface EnhancedFloatingFormProps {
   style: React.CSSProperties;
 }
 
-export default function EnhancedFloatingForm({ onCancel, onDrag, style }: EnhancedFloatingFormProps) {
+export default function FloatingForm({
+  onCancel,
+  onDrag,
+  style
+}: EnhancedFloatingFormProps) {
   const formRef = React.useRef<HTMLDivElement>(null);
 
   // Form state
@@ -109,20 +135,33 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
 
   // Enhanced hooks for dashboard functionality
-  const { companies, loading: companiesLoading, error: companiesError, searchCompanies, selectedCompany, setSelectedCompany, clearSearch } = useCachedCompanySearch();
+  const {
+    companies,
+    loading: companiesLoading,
+    error: companiesError,
+    searchCompanies,
+    selectedCompany,
+    setSelectedCompany,
+    clearSearch
+  } = useCachedCompanySearch();
 
-  const { stages, loading: stagesLoading, error: stagesError, defaultStage } = useGetStages();
+  const { stages, loading: stagesLoading, error: stagesError } = useGetStages();
 
   const [selectedStageId, setSelectedStageId] = useState<string>("");
+  const [companyInputValue, setCompanyInputValue] = useState<string>("");
 
-  const { createApplication, loading: createLoading, error: createError } = useCreateJobApplication();
+  const {
+    createApplication,
+    loading: createLoading,
+    error: createError
+  } = useCreateJobApplication();
 
-  // Set default stage when stages are loaded
+  // Set default stage to first element when stages are loaded
   useEffect(() => {
-    if (defaultStage && !selectedStageId) {
-      setSelectedStageId(defaultStage.id);
+    if (stages?.length > 0 && !selectedStageId) {
+      setSelectedStageId(stages[0].id);
     }
-  }, [defaultStage, selectedStageId]);
+  }, [stages, selectedStageId]);
 
   // Auth state monitoring
   useEffect(() => {
@@ -139,7 +178,9 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
     checkAuthState();
 
     // Listen for auth changes
-    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+    const handleStorageChange = (changes: {
+      [key: string]: chrome.storage.StorageChange;
+    }) => {
       if (changes.isAuthenticated) {
         setIsAuthenticated(changes.isAuthenticated.newValue ?? false);
       }
@@ -196,6 +237,23 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
     }
   }, [selectedCompany, searchCompanies]);
 
+  // Handle Escape key press to close the form
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onCancel();
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener("keydown", handleKeyDown);
+
+    // Cleanup event listener on component unmount
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onCancel]);
+
   const validateForm = useCallback(() => {
     let isValid = true;
 
@@ -223,9 +281,20 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
       // First, get the current job search ID
       const jobSearchId = await JobTrackerAPI.getLastJobSearch();
       if (!jobSearchId) {
-        setSubmitError("No active job search found. Please create a job search first in the dashboard.");
+        setSubmitError(
+          "No active job search found. Please create a job search first in the dashboard."
+        );
         return;
       }
+
+      const companyName =
+        companyInputValue || window.location.hostname.replace("www.", "");
+      console.log("🏢 Company debug:", {
+        selectedCompany,
+        companyInputValue,
+        hostname: window.location.hostname,
+        finalCompanyName: companyName
+      });
 
       const applicationData = {
         positionTitle: sanitizeInput(position),
@@ -236,13 +305,13 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
             }
           : {
               newCompany: {
-                name: window.location.hostname.replace("www.", "")
+                name: sanitizeInput(companyName)
               }
             },
-        jobLinks: [jobUrl],
+        jobLinks: [jobUrl.trim()],
         jobSearchId,
         jobDescription: notes.trim() || undefined,
-        salary: salary ? salary.toString() : undefined
+        salary: salary || undefined
       };
 
       const success = await createApplication(applicationData);
@@ -256,6 +325,7 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
         setSalary("");
         setJobUrl(cleanJobUrl(window.location.href));
         setSelectedCompany(null);
+        setCompanyInputValue("");
         clearSearch();
 
         // Close form after short delay to show success
@@ -265,7 +335,9 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
       }
     } catch (error) {
       console.error("Submit error:", error);
-      setSubmitError(error instanceof Error ? error.message : "Unknown error occurred");
+      setSubmitError(
+        error instanceof Error ? error.message : "Unknown error occurred"
+      );
     }
   };
 
@@ -278,13 +350,19 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
       <DragHandle onMouseDown={onDrag}>
         <DragHandleTitle>
           Add Job Application
-          <AuthStatusIcon isAuthenticated={isAuthenticated}>{isAuthenticated ? "🔐" : "🔓"}</AuthStatusIcon>
+          <AuthStatusIcon isAuthenticated={isAuthenticated}>
+            {isAuthenticated ? "🔐" : "🔓"}
+          </AuthStatusIcon>
         </DragHandleTitle>
         <DragHandleIcon>⋯</DragHandleIcon>
       </DragHandle>
 
       {/* Warning for unauthenticated users */}
-      {!isAuthenticated && <WarningMessage>⚠️ Authentication required. Please log in to save applications.</WarningMessage>}
+      {!isAuthenticated && (
+        <WarningMessage>
+          ⚠️ Authentication required. Please log in to save applications.
+        </WarningMessage>
+      )}
 
       {/* Form Content */}
       <form onSubmit={handleSubmit}>
@@ -315,6 +393,7 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
               loading={companiesLoading}
               onSearch={searchCompanies}
               onSelect={setSelectedCompany}
+              onInputChange={setCompanyInputValue}
               selectedCompany={selectedCompany}
               placeholder="Search companies or add new..."
             />
@@ -324,14 +403,27 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
           {/* Stage Selection */}
           <FormColumn>
             <FormLabel>Stage</FormLabel>
-            <StageSelect stages={stages} selectedStageId={selectedStageId} onSelect={setSelectedStageId} loading={stagesLoading} placeholder="Select application stage..." />
+            <StageSelect
+              stages={stages}
+              selectedStageId={selectedStageId}
+              onSelect={setSelectedStageId}
+              loading={stagesLoading}
+              placeholder="Select application stage..."
+            />
             {stagesError && <ErrorMessage>{stagesError}</ErrorMessage>}
           </FormColumn>
 
           {/* Job URL */}
           <FormColumn>
             <FormLabel>Job URL</FormLabel>
-            <FormInput type="url" value={jobUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setJobUrl(e.target.value)} placeholder="https://..." />
+            <FormInput
+              type="url"
+              value={jobUrl}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setJobUrl(e.target.value)
+              }
+              placeholder="https://..."
+            />
           </FormColumn>
 
           {/* Salary */}
@@ -339,10 +431,23 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
             <FormLabel>Salary</FormLabel>
             <FormInput
               type="number"
+              min="0"
               value={salary}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value = e.target.value;
-                setSalary(value === "" ? "" : parseInt(value));
+                if (value === "") {
+                  setSalary("");
+                } else {
+                  const numValue = parseInt(value, 10);
+                  // Validate the number is positive and reasonable
+                  if (
+                    !isNaN(numValue) &&
+                    numValue >= 0 &&
+                    numValue <= 10000000
+                  ) {
+                    setSalary(numValue);
+                  }
+                }
               }}
               placeholder="e.g., 80000"
             />
@@ -351,20 +456,34 @@ export default function EnhancedFloatingForm({ onCancel, onDrag, style }: Enhanc
           {/* Notes */}
           <FormColumn>
             <FormLabel>Job Description</FormLabel>
-            <TextArea value={notes} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)} placeholder="Job description and requirements..." />
+            <TextArea
+              value={notes}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setNotes(e.target.value)
+              }
+              placeholder="Job description and requirements..."
+            />
           </FormColumn>
         </FormSection>
 
         {/* Error Messages */}
         {submitError && <ErrorMessage>{submitError}</ErrorMessage>}
-        {hasErrors && <WarningMessage>Some features may not work properly due to connection issues.</WarningMessage>}
+        {hasErrors && (
+          <WarningMessage>
+            Some features may not work properly due to connection issues.
+          </WarningMessage>
+        )}
 
         {/* Form Buttons */}
         <FormButtonContainer>
           <FormButton type="button" variant="secondary" onClick={onCancel}>
             Cancel
           </FormButton>
-          <FormButton type="submit" variant="primary" disabled={isLoading || !isAuthenticated}>
+          <FormButton
+            type="submit"
+            variant="primary"
+            disabled={isLoading || !isAuthenticated}
+          >
             {isLoading ? "Creating..." : "Create Application"}
           </FormButton>
         </FormButtonContainer>

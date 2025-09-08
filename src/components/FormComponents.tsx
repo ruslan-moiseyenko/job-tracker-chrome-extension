@@ -17,6 +17,7 @@ interface CompanyAutocompleteProps {
   loading: boolean;
   onSearch: (query: string) => void;
   onSelect: (company: Company | null) => void;
+  onInputChange?: (inputValue: string) => void;
   selectedCompany: Company | null;
   placeholder?: string;
 }
@@ -32,18 +33,24 @@ const AutocompleteInput = styled.input`
   border: 2px solid ${COLORS.FORM_BORDER};
   border-radius: 8px;
   font-size: 14px;
+  background: ${COLORS.BACKGROUND_PRIMARY};
+  color: ${COLORS.TEXT_PRIMARY};
   transition: all 0.2s ease;
-  background: ${COLORS.WHITE};
 
   &:focus {
     outline: none;
     border-color: ${COLORS.FORM_FOCUS_BLUE};
     box-shadow: ${SHADOWS.INPUT_FOCUS_BLUE};
+    background: ${COLORS.BACKGROUND_PRIMARY};
   }
 
   &:disabled {
     background: ${COLORS.FORM_DISABLED_BG};
     cursor: not-allowed;
+  }
+
+  &::placeholder {
+    color: ${COLORS.GRAY_400};
   }
 `;
 
@@ -53,7 +60,7 @@ const SuggestionsList = styled.ul`
   left: 0;
   right: 0;
   z-index: 1000;
-  background: ${COLORS.WHITE};
+  background: ${COLORS.BACKGROUND_PRIMARY};
   border: 1px solid ${COLORS.FORM_BORDER};
   border-radius: 8px;
   box-shadow: ${SHADOWS.DROPDOWN};
@@ -68,7 +75,8 @@ const SuggestionItem = styled.li<{ isHighlighted?: boolean }>`
   padding: 12px;
   cursor: pointer;
   border-bottom: 1px solid ${COLORS.FORM_SEPARATOR};
-  background: ${props => (props.isHighlighted ? COLORS.FORM_DISABLED_BG : COLORS.WHITE)};
+  background: ${props =>
+    props.isHighlighted ? COLORS.FORM_DISABLED_BG : COLORS.WHITE};
 
   &:hover {
     background: ${COLORS.FORM_DISABLED_BG};
@@ -102,7 +110,15 @@ const LoadingIndicator = styled.div`
   font-size: 14px;
 `;
 
-export function CompanyAutocomplete({ companies, loading, onSearch, onSelect, selectedCompany, placeholder = "Search companies..." }: CompanyAutocompleteProps) {
+export function CompanyAutocomplete({
+  companies,
+  loading,
+  onSearch,
+  onSelect,
+  onInputChange,
+  selectedCompany,
+  placeholder = "Search companies..."
+}: CompanyAutocompleteProps) {
   const [inputValue, setInputValue] = useState(selectedCompany?.name || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -126,6 +142,9 @@ export function CompanyAutocomplete({ companies, loading, onSearch, onSelect, se
       onSelect(null);
     }
 
+    // Notify parent of input change
+    onInputChange?.(value);
+
     // Debounced search
     setTimeout(() => onSearch(value), 300);
   };
@@ -143,11 +162,15 @@ export function CompanyAutocomplete({ companies, loading, onSearch, onSelect, se
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setHighlightedIndex(prev => (prev < companies.length - 1 ? prev + 1 : 0));
+        setHighlightedIndex(prev =>
+          prev < companies.length - 1 ? prev + 1 : 0
+        );
         break;
       case "ArrowUp":
         e.preventDefault();
-        setHighlightedIndex(prev => (prev > 0 ? prev - 1 : companies.length - 1));
+        setHighlightedIndex(prev =>
+          prev > 0 ? prev - 1 : companies.length - 1
+        );
         break;
       case "Enter":
         e.preventDefault();
@@ -200,7 +223,13 @@ export function CompanyAutocomplete({ companies, loading, onSearch, onSelect, se
               >
                 <CompanyInfo>
                   <CompanyName>{company.name}</CompanyName>
-                  {(company.industry || company.location) && <CompanyDetails>{[company.industry, company.location].filter(Boolean).join(" • ")}</CompanyDetails>}
+                  {(company.industry || company.location) && (
+                    <CompanyDetails>
+                      {[company.industry, company.location]
+                        .filter(Boolean)
+                        .join(" • ")}
+                    </CompanyDetails>
+                  )}
                 </CompanyInfo>
               </SuggestionItem>
             ))
@@ -238,7 +267,8 @@ const SelectInput = styled.select`
   border: 2px solid ${COLORS.FORM_BORDER};
   border-radius: 8px;
   font-size: 14px;
-  background: ${COLORS.WHITE};
+  background: ${COLORS.BACKGROUND_PRIMARY};
+  color: ${COLORS.TEXT_PRIMARY};
   cursor: pointer;
   transition: all 0.2s ease;
 
@@ -246,6 +276,7 @@ const SelectInput = styled.select`
     outline: none;
     border-color: ${COLORS.FORM_FOCUS_BLUE};
     box-shadow: ${SHADOWS.INPUT_FOCUS_BLUE};
+    background: ${COLORS.BACKGROUND_PRIMARY};
   }
 
   &:disabled {
@@ -256,12 +287,24 @@ const SelectInput = styled.select`
 
 const StageOption = styled.option`
   padding: 8px;
+  background: ${COLORS.BACKGROUND_PRIMARY};
+  color: ${COLORS.TEXT_PRIMARY};
 `;
 
-export function StageSelect({ stages, selectedStageId, onSelect, loading = false, placeholder = "Select stage..." }: StageSelectProps) {
+export function StageSelect({
+  stages,
+  selectedStageId,
+  onSelect,
+  loading = false,
+  placeholder = "Select stage..."
+}: StageSelectProps) {
   return (
     <SelectContainer>
-      <SelectInput value={selectedStageId || ""} onChange={e => onSelect(e.target.value)} disabled={loading || stages.length === 0}>
+      <SelectInput
+        value={selectedStageId || ""}
+        onChange={e => onSelect(e.target.value)}
+        disabled={loading || stages.length === 0}
+      >
         <StageOption value="">{placeholder}</StageOption>
         {stages.map(stage => (
           <StageOption key={stage.id} value={stage.id}>

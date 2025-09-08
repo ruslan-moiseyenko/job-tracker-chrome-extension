@@ -127,7 +127,7 @@ interface CreateJobApplicationData {
   jobLinks: string[];
   jobSearchId: string;
   jobDescription?: string;
-  salary?: string;
+  salary?: number;
   customColor?: string;
 }
 

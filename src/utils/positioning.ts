@@ -1,5 +1,5 @@
 import type { Position, ViewportDimensions, EnhancedPosition } from "./types";
-import { UI_CONSTANTS } from "../constants/ui";
+import { UI_CONSTANTS, FLOATING_BUTTON_POSITION } from "../constants/ui";
 
 /**
  * Calculate dynamic form height based on content
@@ -160,14 +160,15 @@ export function calculateFormPosition(
 }
 
 /**
- * Calculate initial button position (bottom-right corner)
+ * Calculate initial button position (bottom-right corner with pixel-based positioning)
  */
 export function getInitialPosition(viewport?: ViewportDimensions): Position {
   const viewportWidth = viewport?.width ?? window.innerWidth;
   const viewportHeight = viewport?.height ?? window.innerHeight;
 
-  const x = viewportWidth - UI_CONSTANTS.BUTTON_SIZE - UI_CONSTANTS.MARGIN;
-  const y = viewportHeight - UI_CONSTANTS.BUTTON_SIZE - UI_CONSTANTS.MARGIN;
+  // Calculate position from bottom-right corner using pixel values
+  const x = viewportWidth - FLOATING_BUTTON_POSITION.RIGHT;
+  const y = viewportHeight - FLOATING_BUTTON_POSITION.BOTTOM;
 
   return constrainPosition(x, y, viewport);
 }

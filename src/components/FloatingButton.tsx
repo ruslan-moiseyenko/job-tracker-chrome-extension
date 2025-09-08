@@ -1,5 +1,8 @@
 import React from "react";
-import { FloatingButtonContainer, ButtonIcon } from "./styles/FloatingButton.styles";
+import {
+  FloatingButtonContainer,
+  ButtonIcon
+} from "../styles/FloatingButton.styles";
 
 interface FloatingButtonProps {
   onClick: React.MouseEventHandler<HTMLButtonElement>;
@@ -9,7 +12,13 @@ interface FloatingButtonProps {
   isDragging?: boolean;
 }
 
-const FloatingButton: React.FC<FloatingButtonProps> = ({ onClick, onDrag, style, buttonRef: externalButtonRef, isDragging = false }) => {
+export const FloatingButton: React.FC<FloatingButtonProps> = ({
+  onClick,
+  onDrag,
+  style,
+  buttonRef: externalButtonRef,
+  isDragging = false
+}) => {
   const internalButtonRef = React.useRef<HTMLButtonElement>(null);
   const buttonRef = externalButtonRef || internalButtonRef;
 
@@ -21,7 +30,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ onClick, onDrag, style,
       title="Add position to Job Tracker"
       data-interactive
       style={{
-        bottom: "20px",
+        bottom: "100px",
         right: "20px",
         transition: isDragging ? "none" : "box-shadow 0.2s ease-in-out",
         ...style
@@ -45,5 +54,3 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({ onClick, onDrag, style,
     </FloatingButtonContainer>
   );
 };
-
-export default FloatingButton;

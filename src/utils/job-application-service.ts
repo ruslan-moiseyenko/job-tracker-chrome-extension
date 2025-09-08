@@ -1,5 +1,8 @@
 // Enhanced JobApplicationService with your improvements
-import { BackgroundGraphQLClient, type GraphQLResponse } from "./graphql-client";
+import {
+  BackgroundGraphQLClient,
+  type GraphQLResponse
+} from "./graphql-client";
 
 // New types based on the GraphQL schema - matching your API response
 export interface User {
@@ -70,7 +73,7 @@ export interface JobApplicationType {
   currentStage: ApplicationStage;
   jobLinks: string[];
   jobDescription?: string;
-  salary?: string;
+  salary?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,7 +86,7 @@ export interface CreateJobApplicationInput {
   jobLinks: string[];
   jobSearchId: string;
   jobDescription?: string;
-  salary?: string;
+  salary?: number;
   customColor?: string;
 }
 
@@ -124,8 +127,13 @@ export type JobApplication = JobApplicationType;
 
 export class JobApplicationService {
   // Create application with client-side validation (your approach ✅)
-  static async createApplication(applicationData: CreateJobApplicationInput): Promise<GraphQLResponse<{ createJobApplication: JobApplication }>> {
-    return BackgroundGraphQLClient.mutate(GRAPHQL_QUERIES.CREATE_JOB_APPLICATION, { input: applicationData });
+  static async createApplication(
+    applicationData: CreateJobApplicationInput
+  ): Promise<GraphQLResponse<{ createJobApplication: JobApplication }>> {
+    return BackgroundGraphQLClient.mutate(
+      GRAPHQL_QUERIES.CREATE_JOB_APPLICATION,
+      { input: applicationData }
+    );
   }
 
   // Get applications with smart caching (your improvement ✅)
@@ -158,9 +166,15 @@ export class JobApplicationService {
   }
 
   // Update entire application (enhanced version)
-  static async updateApplication(id: string, updateData: UpdateJobApplicationInput): Promise<GraphQLResponse<{ updateJobApplication: JobApplication }>> {
+  static async updateApplication(
+    id: string,
+    updateData: UpdateJobApplicationInput
+  ): Promise<GraphQLResponse<{ updateJobApplication: JobApplication }>> {
     try {
-      const result = await BackgroundGraphQLClient.mutate(GRAPHQL_QUERIES.UPDATE_JOB_APPLICATION, { id, input: updateData });
+      const result = await BackgroundGraphQLClient.mutate(
+        GRAPHQL_QUERIES.UPDATE_JOB_APPLICATION,
+        { id, input: updateData }
+      );
 
       // Invalidate cache after successful update
       if (result.success) {
@@ -191,33 +205,60 @@ export class JobApplicationService {
   }
 
   // Search companies
-  static async searchCompanies(name: string): Promise<GraphQLResponse<{ searchCompanies: Company[] }>> {
-    return BackgroundGraphQLClient.query(GRAPHQL_QUERIES.SEARCH_COMPANIES, { name });
+  static async searchCompanies(
+    name: string
+  ): Promise<GraphQLResponse<{ searchCompanies: Company[] }>> {
+    return BackgroundGraphQLClient.query(GRAPHQL_QUERIES.SEARCH_COMPANIES, {
+      name
+    });
   }
 
   // Get all application stages
-  static async getAllStages(): Promise<GraphQLResponse<{ getAllStages: ApplicationStage[] }>> {
-    return BackgroundGraphQLClient.query(GRAPHQL_QUERIES.GET_APPLICATION_STAGES, {});
+  static async getAllStages(): Promise<
+    GraphQLResponse<{ getAllStages: ApplicationStage[] }>
+  > {
+    return BackgroundGraphQLClient.query(
+      GRAPHQL_QUERIES.GET_APPLICATION_STAGES,
+      {}
+    );
   }
 
   // Get last active job search
-  static async getLastActiveSearch(): Promise<GraphQLResponse<{ getLastActiveSearch: string }>> {
-    return BackgroundGraphQLClient.query(GRAPHQL_QUERIES.GET_LAST_ACTIVE_SEARCH, {});
+  static async getLastActiveSearch(): Promise<
+    GraphQLResponse<{ getLastActiveSearch: string }>
+  > {
+    return BackgroundGraphQLClient.query(
+      GRAPHQL_QUERIES.GET_LAST_ACTIVE_SEARCH,
+      {}
+    );
   }
 
   // Batch operations (updated to work with new schema)
-  static async updateMultipleApplications(updates: Array<{ id: string; updateData: UpdateJobApplicationInput }>): Promise<
+  static async updateMultipleApplications(
+    updates: Array<{ id: string; updateData: UpdateJobApplicationInput }>
+  ): Promise<
     GraphQLResponse<{
       updated: number;
       failed: number;
-      results: Array<GraphQLResponse<{ updateJobApplication: JobApplication }> | { error: unknown }>;
+      results: Array<
+        | GraphQLResponse<{ updateJobApplication: JobApplication }>
+        | { error: unknown }
+      >;
     }>
   > {
-    const results = await Promise.allSettled(updates.map(update => this.updateApplication(update.id, update.updateData)));
+    const results = await Promise.allSettled(
+      updates.map(update =>
+        this.updateApplication(update.id, update.updateData)
+      )
+    );
 
-    const processedResults = results.map(result => (result.status === "fulfilled" ? result.value : { error: result.reason }));
+    const processedResults = results.map(result =>
+      result.status === "fulfilled" ? result.value : { error: result.reason }
+    );
 
-    const successful = processedResults.filter(result => "success" in result && result.success).length;
+    const successful = processedResults.filter(
+      result => "success" in result && result.success
+    ).length;
 
     return {
       success: true,

@@ -31,7 +31,9 @@ export class JobTrackerAPI {
   static async searchCompanies(name: string): Promise<Company[]> {
     try {
       const response = await JobApplicationService.searchCompanies(name);
-      return response.success && response.data ? response.data.searchCompanies : [];
+      return response.success && response.data
+        ? response.data.searchCompanies
+        : [];
     } catch (error) {
       console.error("Failed to search companies:", error);
       return [];
@@ -62,7 +64,9 @@ export class JobTrackerAPI {
   static async getLastJobSearch(): Promise<string | null> {
     try {
       const response = await JobApplicationService.getLastActiveSearch();
-      return response.success && response.data ? response.data.getLastActiveSearch : null;
+      return response.success && response.data
+        ? response.data.getLastActiveSearch
+        : null;
     } catch (error) {
       console.error("Failed to get last job search:", error);
       return null;
@@ -74,7 +78,10 @@ export class JobTrackerAPI {
     try {
       const user = await this.getCurrentUser();
       if (user?.lastActiveSearchId) {
-        console.log("📝 Using lastActiveSearchId from user:", user.lastActiveSearchId);
+        console.log(
+          "📝 Using lastActiveSearchId from user:",
+          user.lastActiveSearchId
+        );
         return user.lastActiveSearchId;
       }
       console.warn("⚠️ No lastActiveSearchId found in user data");
@@ -86,14 +93,21 @@ export class JobTrackerAPI {
   }
 
   // Job application operations
-  static async createJobApplication(applicationData: CreateJobApplicationInput): Promise<JobApplicationType | null> {
+  static async createJobApplication(
+    applicationData: CreateJobApplicationInput
+  ): Promise<JobApplicationType | null> {
     try {
       console.log("🚀 Creating job application with data:", applicationData);
-      const response = await JobApplicationService.createApplication(applicationData);
+      const response = await JobApplicationService.createApplication(
+        applicationData
+      );
       console.log("📝 Create application response:", response);
 
       if (response.success && response.data?.createJobApplication) {
-        console.log("✅ Job application created successfully:", response.data.createJobApplication);
+        console.log(
+          "✅ Job application created successfully:",
+          response.data.createJobApplication
+        );
         return response.data.createJobApplication;
       } else {
         console.error("❌ Failed to create application - Response:", response);
@@ -108,20 +122,36 @@ export class JobTrackerAPI {
     }
   }
 
-  static async updateJobApplication(id: string, updateData: UpdateJobApplicationInput): Promise<JobApplicationType | null> {
+  static async updateJobApplication(
+    id: string,
+    updateData: UpdateJobApplicationInput
+  ): Promise<JobApplicationType | null> {
     try {
-      const response = await JobApplicationService.updateApplication(id, updateData);
-      return response.success && response.data ? response.data.updateJobApplication : null;
+      const response = await JobApplicationService.updateApplication(
+        id,
+        updateData
+      );
+      return response.success && response.data
+        ? response.data.updateJobApplication
+        : null;
     } catch (error) {
       console.error("Failed to update job application:", error);
       return null;
     }
   }
 
-  static async getJobApplications(limit = 20, offset = 0): Promise<JobApplicationType[]> {
+  static async getJobApplications(
+    limit = 20,
+    offset = 0
+  ): Promise<JobApplicationType[]> {
     try {
-      const response = await JobApplicationService.getApplications(limit, offset);
-      return response.success && response.data ? response.data.jobApplications : [];
+      const response = await JobApplicationService.getApplications(
+        limit,
+        offset
+      );
+      return response.success && response.data
+        ? response.data.jobApplications
+        : [];
     } catch (error) {
       console.error("Failed to get job applications:", error);
       return [];
@@ -146,28 +176,40 @@ export class JobTrackerAPI {
     notes?: string;
     stageId?: string;
     jobLinks?: string[];
-    salary?: string;
+    salary?: number | string;
   }): Promise<JobApplicationType | null> {
     try {
       // First, get the current job search ID
       const jobSearchId = await this.getLastJobSearch();
       if (!jobSearchId) {
-        throw new Error("No active job search found. Please create a job search first.");
+        throw new Error(
+          "No active job search found. Please create a job search first."
+        );
       }
 
       // Convert legacy format to new GraphQL schema format
       const applicationInput: CreateJobApplicationInput = {
-        positionTitle: formData.position,
-        currentStageId: formData.stageId || "default-stage-id", // Will need to handle this properly
+        positionTitle: formData.position.trim(),
+        currentStageId: formData.stageId || "",
         company: {
           newCompany: {
-            name: formData.company
+            name: formData.company.trim()
           }
         },
-        jobLinks: formData.jobLinks || [window.location.href],
+        jobLinks: formData.jobLinks?.map(link => link.trim()) || [
+          window.location.href
+        ],
         jobSearchId,
-        jobDescription: formData.notes || (formData.name && formData.surname ? `Applicant: ${formData.name} ${formData.surname}` : undefined),
+        jobDescription:
+          formData.notes?.trim() ||
+          (formData.name && formData.surname
+            ? `Applicant: ${formData.name?.trim()} ${formData.surname?.trim()}`
+            : undefined),
         salary: formData.salary
+          ? typeof formData.salary === "number"
+            ? formData.salary
+            : parseFloat(formData.salary)
+          : undefined
       };
 
       return this.createJobApplication(applicationInput);
@@ -178,14 +220,23 @@ export class JobTrackerAPI {
   }
 
   // Legacy method to support existing FloatingForm component
-  static async createLegacyApplication(legacyData: { name: string; surname: string; position: string; company: string }): Promise<JobApplicationType | null> {
+  static async createLegacyApplication(legacyData: {
+    name: string;
+    surname: string;
+    position: string;
+    company: string;
+  }): Promise<JobApplicationType | null> {
     return this.submitQuickApplication(legacyData);
   }
 
   // Batch operations
-  static async updateMultipleApplications(updates: Array<{ id: string; updateData: UpdateJobApplicationInput }>): Promise<{ successful: number; failed: number }> {
+  static async updateMultipleApplications(
+    updates: Array<{ id: string; updateData: UpdateJobApplicationInput }>
+  ): Promise<{ successful: number; failed: number }> {
     try {
-      const response = await JobApplicationService.updateMultipleApplications(updates);
+      const response = await JobApplicationService.updateMultipleApplications(
+        updates
+      );
 
       if (response.success && response.data) {
         return {
@@ -203,4 +254,13 @@ export class JobTrackerAPI {
 }
 
 // Export types for convenience
-export type { User, Company, ApplicationStage, JobSearchType, JobApplicationType, CreateJobApplicationInput, UpdateJobApplicationInput, JobSearchFilterInput };
+export type {
+  User,
+  Company,
+  ApplicationStage,
+  JobSearchType,
+  JobApplicationType,
+  CreateJobApplicationInput,
+  UpdateJobApplicationInput,
+  JobSearchFilterInput
+};

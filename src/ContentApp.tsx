@@ -1,5 +1,5 @@
-import FloatingButton from "./FloatingButton";
-import EnhancedFloatingForm from "./components/EnhancedFloatingForm";
+import { FloatingButton } from "./components/FloatingButton";
+import FloatingForm from "./components/FloatingForm";
 import { useFloatingButton } from "./hooks/useFloatingButton";
 import { useFloatingForm } from "./hooks/useFloatingForm";
 import { ThemeProvider } from "./styles/ThemeProvider";
@@ -11,9 +11,20 @@ interface ContentAppProps {
 }
 
 export default function ContentApp({ shadowRoot }: ContentAppProps) {
-  const { position, showForm, setShowForm, handleDragStart, handleButtonClick, buttonRef, isDragging } = useFloatingButton();
+  const {
+    position,
+    showForm,
+    setShowForm,
+    handleDragStart,
+    handleButtonClick,
+    buttonRef,
+    isDragging
+  } = useFloatingButton();
 
-  const { formPosition, handleFormDragStart } = useFloatingForm(position, showForm);
+  const { formPosition, handleFormDragStart } = useFloatingForm(
+    position,
+    showForm
+  );
 
   const AppContent = (
     <ThemeProvider>
@@ -33,7 +44,7 @@ export default function ContentApp({ shadowRoot }: ContentAppProps) {
         />
       )}
       {showForm && (
-        <EnhancedFloatingForm
+        <FloatingForm
           onCancel={() => setShowForm(false)}
           onDrag={handleFormDragStart}
           style={
@@ -60,7 +71,11 @@ export default function ContentApp({ shadowRoot }: ContentAppProps) {
 
   // If we have a shadow root, we need to use the cache provider
   if (shadowRoot) {
-    return <ShadowRootCacheProvider shadowRoot={shadowRoot}>{AppContent}</ShadowRootCacheProvider>;
+    return (
+      <ShadowRootCacheProvider shadowRoot={shadowRoot}>
+        {AppContent}
+      </ShadowRootCacheProvider>
+    );
   }
 
   return AppContent;
