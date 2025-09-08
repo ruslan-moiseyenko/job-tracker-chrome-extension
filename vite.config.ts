@@ -24,7 +24,6 @@ export default defineConfig({
           }
           return "content.js";
         },
-        // Ensure CSS is inlined into the JS bundle for Shadow DOM injection
         assetFileNames: assetInfo => {
           if (assetInfo.names?.[0]?.endsWith(".css")) {
             return "content.css";
@@ -35,8 +34,7 @@ export default defineConfig({
     },
     outDir: "dist",
     emptyOutDir: true,
-    sourcemap: true, // Enable sourcemaps for better debugging
-    // Ensure CSS is processed and can be imported
+    sourcemap: true,
     cssCodeSplit: false
   }
 });

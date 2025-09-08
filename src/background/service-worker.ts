@@ -1,7 +1,19 @@
 // Clean Service Worker with lightweight GraphQL client
 // No Apollo dependencies - optimized for Chrome Extensions
 
-import { COLORS } from "../constants/colors.js";
+// Local colors to avoid external imports that cause chunk splitting
+const COLORS = {
+  SUCCESS: "#10b981", // Green for visible button
+  ERROR: "#ef4444" // Red for hidden button
+};
+
+import type {
+  ExtensionMessage,
+  GraphQLMessage,
+  AuthMessage,
+  CacheInvalidateMessage,
+  CacheEntry
+} from "../utils/types.js";
 
 // Auth state monitoring service
 class AuthStateMonitor {
@@ -188,40 +200,7 @@ function decrementActiveRequests() {
   console.log(`📉 Active requests: ${activeRequests}`);
 }
 
-// Message interfaces
-interface GraphQLMessage {
-  action: "graphqlRequest";
-  query: string;
-  variables?: Record<string, unknown>;
-  useCache?: boolean;
-  cacheTTL?: number;
-  requestId?: string;
-  timestamp?: number;
-}
-
-interface AuthMessage {
-  action: "authenticate";
-  credentials: {
-    email: string;
-    password: string;
-  };
-  requestId?: string;
-}
-
-interface CacheInvalidateMessage {
-  action: "invalidateCache";
-  pattern?: string;
-}
-
-type ExtensionMessage = GraphQLMessage | AuthMessage | CacheInvalidateMessage;
-
 // Cache management
-interface CacheEntry<T = unknown> {
-  data: T;
-  timestamp: number;
-  ttl: number;
-}
-
 const CACHE_PREFIX = "graphql_cache_";
 
 // DEVELOPMENT MODE - Using mock responses instead of real API
