@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import styled from "@emotion/styled";
 import { COLORS, SHADOWS } from "../constants/colors";
+import { useDebounce } from "../hooks/useDebounce";
 
 // Company Autocomplete Component (similar to InputCompanyAutocomplete.tsx)
 interface Company {
@@ -124,12 +125,19 @@ export function CompanyAutocomplete({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const debouncedSearchTerm = useDebounce(inputValue, 300);
 
   useEffect(() => {
     if (selectedCompany) {
       setInputValue(selectedCompany.name);
     }
   }, [selectedCompany]);
+
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      onSearch(debouncedSearchTerm);
+    }
+  }, [debouncedSearchTerm, onSearch]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -144,9 +152,6 @@ export function CompanyAutocomplete({
 
     // Notify parent of input change
     onInputChange?.(value);
-
-    // Debounced search
-    setTimeout(() => onSearch(value), 300);
   };
 
   const handleSuggestionClick = (company: Company) => {
@@ -204,7 +209,6 @@ export function CompanyAutocomplete({
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
-        disabled={loading}
       />
 
       {showSuggestions && (companies.length > 0 || loading) && (
