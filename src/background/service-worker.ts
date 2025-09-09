@@ -7,6 +7,9 @@ const COLORS = {
   ERROR: "#ef4444" // Red for hidden button
 };
 
+// Import environment configuration
+import { API_ENDPOINT, LOGIN_URL } from "../config/environment.js";
+
 import type {
   ExtensionMessage,
   GraphQLMessage,
@@ -15,82 +18,383 @@ import type {
   CacheEntry
 } from "../utils/types.js";
 
+// User type for authentication
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  lastActiveSearchId?: string;
+  updatedAt: string;
+  createdAt: string;
+}
+
+// GraphQL Error type
+interface GraphQLError {
+  message: string;
+  extensions?: {
+    code?: string;
+  };
+}
+
+// GraphQL Queries for auth
+const GET_ME_QUERY = `
+  query GetMe {
+    me {
+      id
+      email
+      firstName
+      lastName
+      lastActiveSearchId
+      updatedAt
+      createdAt
+    }
+  }
+`;
+
+const REFRESH_TOKEN_MUTATION = `
+  mutation refreshToken {
+    refreshToken {
+      success
+    }
+  }
+`;
+
 // Auth state monitoring service
 class AuthStateMonitor {
+  private static isAuthCheckInProgress = false;
+
   static async init() {
     // Monitor cookie changes for reactive auth state
     chrome.cookies.onChanged.addListener(async changeInfo => {
-      // Monitor auth-related cookies (adjust cookie names to match your backend)
-      const authCookieNames = [
-        "auth_token",
-        "jwt",
-        "session",
-        "token",
-        "access_token",
-        "refresh_token"
-      ];
+      // Monitor only specific auth cookies
+      const authCookieNames = ["access_token", "refresh_token"];
 
       if (authCookieNames.includes(changeInfo.cookie.name)) {
-        const isAuthenticated =
-          !changeInfo.removed && changeInfo.cookie.httpOnly;
+        console.log(`🍪 Auth cookie changed: ${changeInfo.cookie.name}`);
 
-        // Update auth state in storage
-        await chrome.storage.local.set({
-          isAuthenticated,
-          lastAuthCheck: Date.now()
-        });
+        if (changeInfo.removed) {
+          console.log(`🍪 Auth cookie removed: ${changeInfo.cookie.name}`);
 
-        // Notify all content scripts of auth state change
-        this.notifyAllContentScripts({
-          type: changeInfo.removed ? "AUTH_LOGOUT" : "AUTH_LOGIN",
-          isAuthenticated
-        });
-
-        console.log(
-          `🔐 Auth state changed: ${
-            isAuthenticated ? "logged in" : "logged out"
-          }`
-        );
+          // Check if we still have any auth cookies after removal
+          const cookieInfo = await AuthStateMonitor.checkAuthCookies();
+          if (!cookieInfo.hasAnyAuthCookie) {
+            await AuthStateMonitor.handleAuthStateChange(false, null);
+          } else {
+            // Still have some auth cookies, re-validate
+            const authResult = await AuthStateMonitor.validateAuthWithMeQuery();
+            await AuthStateMonitor.handleAuthStateChange(
+              authResult.isAuthenticated,
+              authResult.user
+            );
+          }
+        } else {
+          // Cookie was added/updated, validate auth
+          console.log(
+            `🍪 Auth cookie added/updated: ${changeInfo.cookie.name}`
+          );
+          const authResult = await AuthStateMonitor.validateAuthWithMeQuery();
+          await AuthStateMonitor.handleAuthStateChange(
+            authResult.isAuthenticated,
+            authResult.user
+          );
+        }
       }
     });
+
+    // Initial auth check on startup
+    await AuthStateMonitor.checkAuthStatus();
   }
 
-  static async checkAuthStatus() {
-    try {
-      // Check for auth cookies across your API domains
-      const cookies = await chrome.cookies.getAll({
-        url: API_ENDPOINT.replace("/graphql", "") // Remove /graphql suffix
-      });
+  static async checkAuthStatus(): Promise<boolean> {
+    if (AuthStateMonitor.isAuthCheckInProgress) {
+      console.log("⏳ Auth check already in progress, waiting...");
+      return AuthStateMonitor.waitForAuthCheck();
+    }
 
-      const authCookie = cookies.find(
-        c =>
-          [
-            "auth_token",
-            "jwt",
-            "session",
-            "token",
-            "access_token",
-            "refresh_token"
-          ].includes(c.name) && c.httpOnly
+    AuthStateMonitor.isAuthCheckInProgress = true;
+
+    try {
+      // Step 1: Check what auth cookies we have
+      const cookieInfo = await AuthStateMonitor.checkAuthCookies();
+
+      if (!cookieInfo.hasAnyAuthCookie) {
+        console.log("🍪 No auth cookies found at all");
+        await AuthStateMonitor.handleAuthStateChange(false, null);
+        return false;
+      }
+
+      // Step 2: If we only have refresh token, try to refresh first
+      if (!cookieInfo.hasAccessToken && cookieInfo.hasRefreshToken) {
+        console.log("🔄 Only refresh token found, attempting refresh...");
+        const refreshSuccess = await AuthStateMonitor.attemptTokenRefresh();
+
+        if (!refreshSuccess) {
+          console.log("❌ Token refresh failed");
+          await AuthStateMonitor.handleAuthStateChange(false, null);
+          return false;
+        }
+
+        console.log("✅ Token refresh successful, proceeding with ME query");
+      }
+
+      // Step 3: Validate auth with ME query (either with existing or refreshed token)
+      const authResult = await AuthStateMonitor.validateAuthWithMeQuery();
+      await AuthStateMonitor.handleAuthStateChange(
+        authResult.isAuthenticated,
+        authResult.user
       );
 
-      const isAuthenticated = !!authCookie;
-
-      await chrome.storage.local.set({
-        isAuthenticated,
-        lastAuthCheck: Date.now()
-      });
-
-      return isAuthenticated;
+      return authResult.isAuthenticated;
     } catch (error) {
       console.error("❌ Auth check failed:", error);
+      await AuthStateMonitor.handleAuthStateChange(false, null);
+      return false;
+    } finally {
+      AuthStateMonitor.isAuthCheckInProgress = false;
+    }
+  }
+
+  private static async checkAuthCookies(): Promise<{
+    hasAccessToken: boolean;
+    hasRefreshToken: boolean;
+    hasAnyAuthCookie: boolean;
+  }> {
+    try {
+      const cookies = await chrome.cookies.getAll({
+        url: API_ENDPOINT.replace("/graphql", "")
+      });
+
+      const accessToken = cookies.find(
+        c => c.name === "access_token" && c.httpOnly
+      );
+      const refreshToken = cookies.find(
+        c => c.name === "refresh_token" && c.httpOnly
+      );
+
+      const hasAccessToken = !!accessToken;
+      const hasRefreshToken = !!refreshToken;
+      const hasAnyAuthCookie = hasAccessToken || hasRefreshToken;
+
+      console.log(
+        `🍪 Found access_token: ${hasAccessToken}, refresh_token: ${hasRefreshToken}`
+      );
+
+      return {
+        hasAccessToken,
+        hasRefreshToken,
+        hasAnyAuthCookie
+      };
+    } catch (error) {
+      console.error("❌ Cookie check failed:", error);
+      return {
+        hasAccessToken: false,
+        hasRefreshToken: false,
+        hasAnyAuthCookie: false
+      };
+    }
+  }
+
+  private static async validateAuthWithMeQuery(): Promise<{
+    isAuthenticated: boolean;
+    user: User | null;
+  }> {
+    try {
+      console.log("🔍 Validating auth with ME query...");
+
+      const response = await fetch(API_ENDPOINT, {
+        method: "POST",
+        credentials: "include", // Send httpOnly cookies
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client": "chrome-extension"
+        },
+        body: JSON.stringify({
+          query: GET_ME_QUERY
+        })
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log("🔄 Unauthorized, attempting token refresh...");
+          const refreshSuccess = await AuthStateMonitor.attemptTokenRefresh();
+
+          if (refreshSuccess) {
+            // Retry ME query after successful refresh
+            return await AuthStateMonitor.validateAuthWithMeQuery();
+          }
+        }
+
+        console.error(`❌ ME query failed with status: ${response.status}`);
+        return { isAuthenticated: false, user: null };
+      }
+
+      const result = await response.json();
+
+      if (result.errors) {
+        console.error("❌ ME query GraphQL errors:", result.errors);
+
+        // Check if it's an auth error
+        const hasAuthError = result.errors.some(
+          (error: GraphQLError) =>
+            error.message?.toLowerCase().includes("unauthorized") ||
+            error.extensions?.code === "UNAUTHENTICATED"
+        );
+
+        if (hasAuthError) {
+          console.log("🔄 Auth error detected, attempting token refresh...");
+          const refreshSuccess = await AuthStateMonitor.attemptTokenRefresh();
+
+          if (refreshSuccess) {
+            return await AuthStateMonitor.validateAuthWithMeQuery();
+          }
+        }
+
+        return { isAuthenticated: false, user: null };
+      }
+
+      if (result.data?.me) {
+        console.log("✅ ME query successful, user authenticated");
+        return { isAuthenticated: true, user: result.data.me };
+      }
+
+      console.log("❌ ME query returned no user data");
+      return { isAuthenticated: false, user: null };
+    } catch (error) {
+      console.error("❌ ME query failed:", error);
+      return { isAuthenticated: false, user: null };
+    }
+  }
+
+  static async attemptTokenRefresh(): Promise<boolean> {
+    try {
+      console.log("🔄 Attempting token refresh...");
+
+      const response = await fetch(API_ENDPOINT, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client": "chrome-extension"
+        },
+        body: JSON.stringify({
+          query: REFRESH_TOKEN_MUTATION
+        })
+      });
+
+      if (!response.ok) {
+        console.error(
+          `❌ Token refresh failed with status: ${response.status}`
+        );
+        return false;
+      }
+
+      const result = await response.json();
+
+      if (result.errors) {
+        console.error("❌ Token refresh GraphQL errors:", result.errors);
+        return false;
+      }
+
+      if (result.data?.refreshToken?.success) {
+        console.log("✅ Token refresh successful");
+        return true;
+      }
+
+      console.error("❌ Token refresh returned unsuccessful result");
+      return false;
+    } catch (error) {
+      console.error("❌ Token refresh error:", error);
       return false;
     }
+  }
+
+  private static async handleAuthStateChange(
+    isAuthenticated: boolean,
+    user: User | null
+  ) {
+    console.log(
+      `🔐 Auth state changed: ${
+        isAuthenticated ? "authenticated" : "unauthenticated"
+      }`
+    );
+
+    // Store auth state and user data
+    await chrome.storage.local.set({
+      isAuthenticated,
+      user,
+      lastAuthCheck: Date.now()
+    });
+
+    // Notify all content scripts
+    await AuthStateMonitor.notifyAllContentScripts({
+      type: "AUTH_STATUS_CHANGED",
+      isAuthenticated,
+      user
+    });
+
+    // Update extension badge for all tabs based on auth state
+    await AuthStateMonitor.updateAllTabsBadges(isAuthenticated);
+  }
+
+  private static async updateAllTabsBadges(isAuthenticated: boolean) {
+    try {
+      const tabs = await chrome.tabs.query({});
+
+      for (const tab of tabs) {
+        if (tab.id) {
+          // Get button visibility state for this tab
+          const storageKey = `showFloatingButton_${tab.id}`;
+          const result = await chrome.storage.local.get([storageKey]);
+          const isButtonVisible = result[storageKey] ?? true;
+
+          // Update badge based on auth state and button visibility
+          const badgeText = isAuthenticated
+            ? isButtonVisible
+              ? ""
+              : "X"
+            : "!";
+          const badgeColor = isAuthenticated
+            ? isButtonVisible
+              ? COLORS.SUCCESS
+              : COLORS.ERROR
+            : "#fbbf24"; // Yellow for unauthenticated
+
+          chrome.action.setBadgeText({
+            text: badgeText,
+            tabId: tab.id
+          });
+
+          chrome.action.setBadgeBackgroundColor({
+            color: badgeColor,
+            tabId: tab.id
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update tab badges:", error);
+    }
+  }
+
+  private static async waitForAuthCheck(): Promise<boolean> {
+    return new Promise(resolve => {
+      const checkStatus = () => {
+        if (!AuthStateMonitor.isAuthCheckInProgress) {
+          chrome.storage.local.get(["isAuthenticated"]).then(result => {
+            resolve(result.isAuthenticated || false);
+          });
+        } else {
+          setTimeout(checkStatus, 100);
+        }
+      };
+      checkStatus();
+    });
   }
 
   static async notifyAllContentScripts(message: {
     type: string;
     isAuthenticated?: boolean;
+    user?: User | null;
   }) {
     const tabs = await chrome.tabs.query({});
     tabs.forEach(tab => {
@@ -107,11 +411,24 @@ class AuthStateMonitor {
 AuthStateMonitor.init();
 
 // Handle extension icon clicks
+// Handle extension icon clicks
 chrome.action.onClicked.addListener(async tab => {
   if (!tab.id) return;
 
   try {
-    // Get current button state for this tab
+    // Check authentication status first
+    const { isAuthenticated } = await chrome.storage.local.get([
+      "isAuthenticated"
+    ]);
+
+    if (!isAuthenticated) {
+      // User not authenticated - redirect to login page
+      console.log("🔐 User not authenticated, redirecting to login");
+      await chrome.tabs.create({ url: LOGIN_URL });
+      return;
+    }
+
+    // User is authenticated - toggle floating button visibility
     const storageKey = `showFloatingButton_${tab.id}`;
     const result = await chrome.storage.local.get([storageKey]);
     const currentState = result[storageKey] ?? true; // Default to true if not set
@@ -141,7 +458,7 @@ chrome.action.onClicked.addListener(async tab => {
       tabId: tab.id
     });
   } catch (error) {
-    console.error("Failed to toggle floating button:", error);
+    console.error("Failed to handle icon click:", error);
   }
 });
 
@@ -206,10 +523,6 @@ const CACHE_PREFIX = "graphql_cache_";
 // DEVELOPMENT MODE - Using mock responses instead of real API
 // Change this to false and set real endpoints when you have a backend ready
 const USE_MOCK_DATA = false;
-
-// TODO: Replace with your real API endpoints
-const API_ENDPOINT = "http://localhost:4000/graphql"; // Fixed port typo (was 400, should be 4000)
-const AUTH_ENDPOINT = "https://your-api-domain.com/auth";
 
 // Main message handler
 chrome.runtime.onMessage.addListener(
@@ -368,15 +681,9 @@ async function handleGraphQLRequest(
           `🔐 [${requestId}] Auth required, attempting token refresh`
         );
 
-        // Check if we still have auth cookies
-        const hasAuthCookies = await AuthStateMonitor.checkAuthStatus();
-        if (!hasAuthCookies) {
-          throw new Error("Authentication required - no valid cookies found");
-        }
-
-        // Try token refresh
-        const refreshed = await refreshToken();
-        if (refreshed) {
+        // Try GraphQL-based token refresh
+        const refreshSuccess = await AuthStateMonitor.attemptTokenRefresh();
+        if (refreshSuccess) {
           console.log(`🔄 [${requestId}] Token refreshed, retrying request`);
           return handleGraphQLRequest(message, sendResponse);
         } else {
@@ -445,54 +752,23 @@ async function handleGraphQLRequest(
   }
 }
 
-// Authentication handler
+// Authentication handler - Note: This is legacy and should not be used
+// The extension redirects to web app for login instead
 async function handleAuthentication(
   message: AuthMessage,
   sendResponse: (response: unknown) => void
 ) {
   const requestId = message.requestId || generateRequestId();
 
-  try {
-    console.log(`🔐 [${requestId}] Authentication attempt`);
+  console.warn(
+    `⚠️ [${requestId}] Legacy auth handler called - extension should redirect to web app for login`
+  );
 
-    const response = await fetch(`${AUTH_ENDPOINT}/login`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Request-ID": requestId
-      },
-      body: JSON.stringify(message.credentials)
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      // Clear cache on successful auth
-      await clearAllCache();
-      console.log(`✅ [${requestId}] Authentication success`);
-
-      sendResponse({
-        success: true,
-        data: data,
-        requestId
-      });
-    } else {
-      console.log(`❌ [${requestId}] Authentication failed`);
-      sendResponse({
-        success: false,
-        error: data.message || "Authentication failed",
-        requestId
-      });
-    }
-  } catch (error) {
-    console.error(`❌ [${requestId}] Auth error:`, error);
-    sendResponse({
-      success: false,
-      error: error instanceof Error ? error.message : "Authentication failed",
-      requestId
-    });
-  }
+  sendResponse({
+    success: false,
+    error: `Authentication should be done through the web application at ${LOGIN_URL}`,
+    requestId
+  });
 }
 
 // Cache invalidation handler
@@ -589,22 +865,6 @@ async function clearAllCache(): Promise<void> {
 
   if (keysToRemove.length > 0) {
     await chrome.storage.local.remove(keysToRemove);
-  }
-}
-
-// Token refresh
-async function refreshToken(): Promise<boolean> {
-  try {
-    const response = await fetch(`${AUTH_ENDPOINT}/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" }
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error("Token refresh failed:", error);
-    return false;
   }
 }
 
