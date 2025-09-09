@@ -24,12 +24,14 @@ const PRODUCTION: Environment = {
   isDevelopment: false
 };
 
-// Auto-detect environment based on manifest
-// In development, extension ID changes frequently
-// In production, you'll have a stable extension ID
-const isProduction = chrome.runtime.id === "your-production-extension-id-here";
+// Auto-detect environment based on Vite mode
+// Vite automatically sets import.meta.env.DEV in development
+const isDev = import.meta.env.DEV;
 
-export const ENV: Environment = isProduction ? PRODUCTION : DEVELOPMENT;
+export const ENV: Environment = isDev ? DEVELOPMENT : PRODUCTION;
 
 // Export individual constants for convenience
-export const { API_ENDPOINT, WEB_APP_URL, LOGIN_URL, isDevelopment } = ENV;
+export const API_ENDPOINT = ENV.API_ENDPOINT;
+export const WEB_APP_URL = ENV.WEB_APP_URL;
+export const LOGIN_URL = ENV.LOGIN_URL;
+export const isDevelopment = ENV.isDevelopment;

@@ -7,8 +7,9 @@ const COLORS = {
   ERROR: "#ef4444" // Red for hidden button
 };
 
-// Import environment configuration
-import { API_ENDPOINT, LOGIN_URL } from "../config/environment.js";
+// Build-time constants from Vite config
+const API_ENDPOINT = __API_ENDPOINT__;
+const LOGIN_URL = __LOGIN_URL__;
 
 import type {
   ExtensionMessage,

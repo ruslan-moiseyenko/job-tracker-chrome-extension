@@ -24,6 +24,10 @@ import { BackgroundGraphQLClient } from "../utils/graphql-client";
 import { COLORS, SHADOWS } from "../constants/colors";
 import styled from "@emotion/styled";
 
+// Constants for this component - using build-time constants from Vite
+const LOGIN_URL = __LOGIN_URL__;
+const isDevelopment = __DEV__;
+
 // Utility function to clean URLs by removing all query parameters
 const cleanJobUrl = (url: string): string => {
   try {
@@ -360,13 +364,36 @@ export default function FloatingForm({
       {/* Warning for unauthenticated users */}
       {!isAuthenticated && (
         <WarningMessage>
-          ⚠️ Authentication required. Please log in to save applications.
+          ⚠️ Authentication required.{" "}
+          <a href={LOGIN_URL} target="_blank" rel="noopener noreferrer">
+            Please log in.
+          </a>
+          {isDevelopment && (
+            <div style={{ fontSize: "10px", opacity: 0.7, marginTop: "4px" }}>
+              Dev Mode: {LOGIN_URL}
+            </div>
+          )}
         </WarningMessage>
       )}
 
       {/* Form Content */}
       <form onSubmit={handleSubmit}>
         <FormSection>
+          {/* Company Search */}
+          <FormColumn>
+            <FormLabel>Company</FormLabel>
+            <CompanyAutocomplete
+              companies={companies}
+              loading={companiesLoading}
+              onSearch={searchCompanies}
+              onSelect={setSelectedCompany}
+              onInputChange={setCompanyInputValue}
+              selectedCompany={selectedCompany}
+              placeholder="Search companies or add new..."
+            />
+            {companiesError && <ErrorMessage>{companiesError}</ErrorMessage>}
+          </FormColumn>
+
           {/* Position Field */}
           <FormColumn>
             <FormLabel>
@@ -383,21 +410,6 @@ export default function FloatingForm({
               required
             />
             {positionError && <ErrorMessage>{positionError}</ErrorMessage>}
-          </FormColumn>
-
-          {/* Company Search */}
-          <FormColumn>
-            <FormLabel>Company</FormLabel>
-            <CompanyAutocomplete
-              companies={companies}
-              loading={companiesLoading}
-              onSearch={searchCompanies}
-              onSelect={setSelectedCompany}
-              onInputChange={setCompanyInputValue}
-              selectedCompany={selectedCompany}
-              placeholder="Search companies or add new..."
-            />
-            {companiesError && <ErrorMessage>{companiesError}</ErrorMessage>}
           </FormColumn>
 
           {/* Stage Selection */}
