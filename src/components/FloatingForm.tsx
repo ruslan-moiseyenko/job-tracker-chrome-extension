@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Enhanced FloatingForm matching dashboard AddNewApplication functionality
 import React, { useState, useEffect, useCallback } from "react";
 import { JobTrackerAPI } from "../services/job-tracker-api";
@@ -27,21 +28,6 @@ import styled from "@emotion/styled";
 // Constants for this component - using build-time constants from Vite
 const LOGIN_URL = __LOGIN_URL__;
 const isDevelopment = __DEV__;
-
-// Utility function to clean URLs by removing all query parameters
-const cleanJobUrl = (url: string): string => {
-  try {
-    const urlObj = new URL(url);
-    // Remove all query parameters (everything after ?)
-    urlObj.search = "";
-    return urlObj.toString();
-  } catch (error) {
-    // If URL parsing fails, manually remove everything after ?
-    console.warn("Failed to parse URL, using fallback method:", url, error);
-    const questionMarkIndex = url.indexOf("?");
-    return questionMarkIndex !== -1 ? url.substring(0, questionMarkIndex) : url;
-  }
-};
 
 // Enhanced styled components
 const FormSection = styled.div`
@@ -129,14 +115,22 @@ export default function FloatingForm({
   const [notes, setNotes] = useState("");
   const [salary, setSalary] = useState<number | "">("");
   const [jobUrl, setJobUrl] = useState(() => {
-    // Remove tracking parameters from URL for cleaner job links
-    return cleanJobUrl(window.location.href);
+    // Keep full URL with all parameters
+    return window.location.href;
   });
 
   // Validation state
   const [positionError, setPositionError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+
+  // AI extraction state
+  const [isAiExtracting, setIsAiExtracting] = useState<boolean>(false);
+  const [aiStatus, setAiStatus] = useState<
+    "checking" | "available" | "unavailable"
+  >("checking");
+  const [abortController, setAbortController] =
+    useState<AbortController | null>(null);
 
   // Enhanced hooks for dashboard functionality
   const {
@@ -194,6 +188,341 @@ export default function FloatingForm({
     return () => chrome.storage.onChanged.removeListener(handleStorageChange);
   }, []);
 
+  // Check AI availability on form mount
+  useEffect(() => {
+    const checkAIAvailability = async () => {
+      try {
+        setAiStatus("checking");
+        // Check if content AI extractor is available
+        if (
+          typeof window !== "undefined" &&
+          (window as any).contentAIExtractor
+        ) {
+          const extractor = (window as any).contentAIExtractor;
+          const availability = await extractor.checkAvailability();
+          setAiStatus(availability.available ? "available" : "unavailable");
+        } else {
+          setAiStatus("unavailable");
+        }
+      } catch (error) {
+        console.warn("Error checking AI availability:", error);
+        setAiStatus("unavailable");
+      }
+    };
+
+    checkAIAvailability();
+  }, []);
+
+  // Helper function to fill form with job data (supports partial updates)
+  const fillFormWithJobData = useCallback(
+    async (jobData: any, isPartial: boolean = false) => {
+      try {
+        console.log(
+          "🤖 AI Debug: Starting form fill with data:",
+          jobData,
+          isPartial ? "(partial)" : "(complete)"
+        );
+
+        // Fill form fields only if AI found data (not "unknown")
+        if (jobData.company && jobData.company !== "unknown") {
+          console.log("🤖 AI Debug: Setting company name:", jobData.company);
+          // Don't trigger expensive searchCompanies API call during auto-fill
+          // Just set the company name directly for fast form filling
+          setSelectedCompany({
+            id: "",
+            name: jobData.company,
+            location: ""
+          });
+          // Update the input value to show the company name
+          setCompanyInputValue(jobData.company);
+        }
+
+        if (jobData.position && jobData.position !== "unknown") {
+          console.log("🤖 AI Debug: Setting position:", jobData.position);
+          setPosition(jobData.position);
+          setPositionError(null);
+        }
+
+        if (jobData.jobDescription && jobData.jobDescription !== "unknown") {
+          console.log(
+            "🤖 AI Debug: Setting job description (length:",
+            jobData.jobDescription.length,
+            ")"
+          );
+          setNotes(jobData.jobDescription);
+        }
+
+        if (!isPartial) {
+          console.log("🤖 AI Debug: Form auto-filled successfully");
+        } else {
+          console.log(
+            "🤖 AI Debug: Form partially filled (progressive update)"
+          );
+        }
+      } catch (error) {
+        console.error("🤖 AI Debug: Error filling form:", error);
+      }
+    },
+    [
+      setSelectedCompany,
+      setPosition,
+      setNotes,
+      setCompanyInputValue,
+      setPositionError
+    ]
+  ); // Dependencies for useCallback
+
+  // AI auto-fill function
+  const handleAiAutoFill = useCallback(async () => {
+    if (isAiExtracting) {
+      // Cancel extraction if already running
+      if (abortController) {
+        abortController.abort();
+
+        // Handle cancellation for window messaging fallback
+        if ((abortController as any).cancelMessage) {
+          (abortController as any).cancelMessage();
+        }
+
+        // Handle cleanup for window messaging fallback
+        if ((abortController as any).cleanup) {
+          (abortController as any).cleanup();
+        } else {
+          setAbortController(null);
+          setIsAiExtracting(false);
+        }
+      } else {
+        setIsAiExtracting(false);
+      }
+      console.log("🤖 AI Debug: AI extraction cancelled by user");
+      return;
+    }
+
+    setIsAiExtracting(true);
+    const controller = new AbortController();
+    setAbortController(controller);
+
+    console.log("🤖 AI Debug: Starting manual AI extraction");
+
+    try {
+      // Extract page content
+      const pageContent = {
+        title: document.title,
+        content: document.body.innerText,
+        url: window.location.href,
+        hostname: window.location.hostname
+      };
+
+      // Check if content AI extractor is directly available
+      if (typeof window !== "undefined" && (window as any).contentAIExtractor) {
+        console.log("🤖 AI Debug: Using direct AI extractor access");
+        const extractor = (window as any).contentAIExtractor;
+
+        try {
+          // Use quick extraction method to leverage caching with progressive updates
+          const jobData = await extractor.extractJobDataQuick(
+            {
+              force: true,
+              source: "user-triggered",
+              signal: controller.signal
+            },
+            (fieldName: string, data: string) => {
+              // Progressive form filling - update form as each field is extracted
+              console.log(
+                `🚀 AI Debug: Progressive update for ${fieldName}: ${data.substring(
+                  0,
+                  50
+                )}...`
+              );
+
+              // Use setTimeout to ensure each update is processed individually
+              setTimeout(() => {
+                const partialData = { [fieldName]: data };
+                fillFormWithJobData(partialData, true);
+              }, 0);
+            }
+          );
+
+          console.log("🤖 AI Debug: AI extraction response:", jobData);
+          await fillFormWithJobData(jobData, false); // Complete result
+
+          // Reset extraction state after successful completion
+          setIsAiExtracting(false);
+          setAbortController(null);
+          console.log("🤖 AI Debug: AI extraction completed successfully");
+        } catch (extractionError) {
+          if (
+            extractionError instanceof Error &&
+            extractionError.name === "AbortError"
+          ) {
+            console.log("🤖 AI Debug: Direct AI extraction was cancelled");
+          } else {
+            console.error(
+              "🤖 AI Debug: Direct AI extraction failed:",
+              extractionError
+            );
+          }
+          // Reset state on error
+          setIsAiExtracting(false);
+          setAbortController(null);
+          throw extractionError; // Re-throw to be caught by outer catch block
+        }
+      } else {
+        console.log(
+          "🤖 AI Debug: Content AI extractor not available, using window messaging"
+        );
+        // Fallback: use window messaging
+        const requestId = Date.now().toString();
+        window.postMessage(
+          {
+            type: "EXTRACT_JOB_DATA_INTERNAL",
+            source: "floating-form",
+            requestId,
+            payload: { pageContent }
+          },
+          "*"
+        );
+
+        console.log("🤖 AI Debug: Posted message for AI extraction");
+
+        // Store cleanup function in controller for cancellation
+        const cleanup = () => {
+          window.removeEventListener("message", handleMessage);
+          setIsAiExtracting(false);
+          setAbortController(null);
+        };
+
+        // Listen for response
+        const handleMessage = (event: MessageEvent) => {
+          if (
+            event.data.type === "JOB_DATA_EXTRACTED_RESPONSE" &&
+            event.data.source === "content-script" &&
+            event.data.requestId === requestId
+          ) {
+            console.log("🤖 AI Debug: AI extraction response:", event.data);
+
+            if (event.data.cancelled) {
+              console.log("🤖 AI Debug: AI extraction was cancelled");
+            } else if (event.data.success && event.data.data) {
+              fillFormWithJobData(event.data.data, false);
+            } else {
+              console.log(
+                "🤖 AI Debug: No job data extracted or extraction failed"
+              );
+            }
+
+            cleanup();
+          }
+        };
+
+        window.addEventListener("message", handleMessage);
+
+        // Store cleanup and cancellation functions for abort controller
+        (controller as any).cleanup = cleanup;
+        (controller as any).cancelMessage = () => {
+          window.postMessage(
+            {
+              type: "CANCEL_EXTRACTION",
+              source: "floating-form",
+              requestId
+            },
+            "*"
+          );
+        };
+
+        // Cleanup after timeout
+        setTimeout(() => {
+          if (isAiExtracting) {
+            cleanup();
+          }
+        }, 15000);
+
+        return; // Exit early for messaging approach
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log("🤖 AI Debug: AI extraction was cancelled");
+      } else {
+        console.error("🤖 AI Debug: AI auto-fill failed:", error);
+      }
+    } finally {
+      if (isAiExtracting) {
+        setIsAiExtracting(false);
+        setAbortController(null);
+      }
+    }
+  }, [
+    isAiExtracting,
+    abortController,
+    setIsAiExtracting,
+    setAbortController,
+    fillFormWithJobData
+  ]); // Dependencies for useCallback
+
+  // Auto-trigger AI extraction on form mount - DISABLED to prevent background CPU usage
+  // This useEffect has been commented out to only perform extraction when explicitly requested by user
+  /*
+  useEffect(() => {
+    const performAutoExtraction = async () => {
+      // Don't auto-fill if already done
+      if (hasBeenAutoFilled) {
+        console.log("🚫 AI Debug: Form already auto-filled, skipping");
+        return;
+      }
+
+      // Check if we already have pre-extracted data first
+      const preExtracted =
+        window.preExtractedJobDataCache?.[window.location.href];
+      if (preExtracted) {
+        console.log(
+          "🚀 AI Debug: Pre-extracted data available, using it immediately"
+        );
+        setIsAiExtracting(true);
+        setHasBeenAutoFilled(true);
+        await fillFormWithJobData(preExtracted.data, false);
+        setIsAiExtracting(false);
+        console.log("🚀 AI Debug: Form filled with pre-extracted data");
+        return;
+      }
+
+      // Check if extraction is already in progress - wait for it
+      const extractionInProgress = window.extractionInProgress;
+      if (extractionInProgress) {
+        console.log(
+          "🚀 AI Debug: Extraction in progress on form mount, waiting for it"
+        );
+        setIsAiExtracting(true);
+        try {
+          const jobData = await extractionInProgress;
+          console.log(
+            "🚀 AI Debug: Using data from ongoing extraction on form mount"
+          );
+          setHasBeenAutoFilled(true);
+          await fillFormWithJobData(jobData, false);
+          setIsAiExtracting(false);
+          return;
+        } catch (error) {
+          console.log(
+            "🚀 AI Debug: Ongoing extraction failed on form mount:",
+            error
+          );
+          setIsAiExtracting(false);
+          // Don't start new extraction here, let user trigger manually if needed
+          return;
+        }
+      }
+
+      // Only trigger live extraction if no pre-extracted data and nothing in progress
+      console.log(
+        "🤖 AI Debug: No pre-extracted data, auto-triggering live AI extraction"
+      );
+      handleAiAutoFill();
+    };
+
+    performAutoExtraction();
+  }, [fillFormWithJobData, handleAiAutoFill, hasBeenAutoFilled]); // Dependencies included
+  */
+
   // Auto-fill position from page content
   useEffect(() => {
     // Try to extract job title from the current page
@@ -228,18 +557,30 @@ export default function FloatingForm({
     }
   }, [position]);
 
-  // Auto-fill company from hostname
+  // Reset auto-fill state when URL changes
   useEffect(() => {
-    if (!selectedCompany) {
-      const hostname = window.location.hostname.replace("www.", "");
-      const companyName = hostname.split(".")[0];
-
-      if (companyName) {
-        // Search for the company
-        searchCompanies(companyName);
+    const currentUrl = window.location.href;
+    const handleUrlChange = () => {
+      if (window.location.href !== currentUrl) {
+        console.log("🔄 AI Debug: URL changed, resetting auto-fill state");
+        // setHasBeenAutoFilled(false); // Commented out since AI extraction is disabled
       }
-    }
-  }, [selectedCompany, searchCompanies]);
+    };
+
+    // Listen for navigation events
+    window.addEventListener("popstate", handleUrlChange);
+    const observer = new MutationObserver(() => {
+      if (window.location.href !== currentUrl) {
+        handleUrlChange();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      window.removeEventListener("popstate", handleUrlChange);
+      observer.disconnect();
+    };
+  }, []);
 
   // Handle Escape key press to close the form
   useEffect(() => {
@@ -327,7 +668,7 @@ export default function FloatingForm({
         setPosition("");
         setNotes("");
         setSalary("");
-        setJobUrl(cleanJobUrl(window.location.href));
+        setJobUrl(window.location.href);
         setSelectedCompany(null);
         setCompanyInputValue("");
         clearSearch();
@@ -389,6 +730,7 @@ export default function FloatingForm({
               onSelect={setSelectedCompany}
               onInputChange={setCompanyInputValue}
               selectedCompany={selectedCompany}
+              inputValue={companyInputValue}
               placeholder="Search companies or add new..."
             />
             {companiesError && <ErrorMessage>{companiesError}</ErrorMessage>}
@@ -486,6 +828,82 @@ export default function FloatingForm({
           </WarningMessage>
         )}
 
+        {/* AI Status and Auto-fill */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "12px",
+            padding: "8px",
+            borderRadius: "6px",
+            backgroundColor: COLORS.BACKGROUND_SECONDARY,
+            fontSize: "12px"
+          }}
+        >
+          <div
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              backgroundColor:
+                aiStatus === "available"
+                  ? COLORS.SUCCESS
+                  : aiStatus === "checking"
+                  ? COLORS.WARNING_BORDER
+                  : COLORS.GRAY_400
+            }}
+          />
+          <span>
+            AI Auto-fill:{" "}
+            {aiStatus === "checking"
+              ? "Checking..."
+              : aiStatus === "available"
+              ? "Available"
+              : "Not available"}
+          </span>
+          {aiStatus === "available" && (
+            <button
+              type="button"
+              onClick={() => {
+                handleAiAutoFill().catch(error => {
+                  // This catch block ensures no unhandled promise rejections
+                  // The error is already handled inside handleAiAutoFill, this is just a safety net
+                  if (error instanceof Error && error.name === "AbortError") {
+                    console.log(
+                      "🤖 AI Debug: Button click handler caught AbortError (already handled)"
+                    );
+                  } else {
+                    console.error(
+                      "🤖 AI Debug: Button click handler caught unexpected error:",
+                      error
+                    );
+                  }
+                });
+              }}
+              disabled={false}
+              style={{
+                background: isAiExtracting
+                  ? "linear-gradient(135deg, #dc2626, #b91c1c)"
+                  : "linear-gradient(135deg, #10b981, #059669)",
+                color: "white",
+                border: "none",
+                padding: "6px 12px",
+                borderRadius: "4px",
+                fontSize: "12px",
+                fontWeight: "500",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+            >
+              <span>🤖</span>
+              {isAiExtracting ? "Cancel" : "Auto-fill"}
+            </button>
+          )}
+        </div>
+
         {/* Form Buttons */}
         <FormButtonContainer>
           <FormButton type="button" variant="secondary" onClick={onCancel}>
@@ -496,7 +914,7 @@ export default function FloatingForm({
             variant="primary"
             disabled={isLoading || !isAuthenticated}
           >
-            {isLoading ? "Creating..." : "Create Application"}
+            {isLoading ? "Creating..." : "Add New"}
           </FormButton>
         </FormButtonContainer>
       </form>

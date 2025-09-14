@@ -2,11 +2,12 @@
   "manifest_version": 3,
   "version": "1.0.0",
   "name": "Job Tracker",
-  "description": "Track job applications with GraphQL integration and cookie authentication",
+  "description": "Track job applications with GraphQL integration and AI-powered auto-fill",
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
+  "minimum_chrome_version": "138",
   "action": {
     "default_title": "Job Tracker"
   },
@@ -29,7 +30,8 @@
   "permissions": [
     "tabs",
     "storage",
-    "cookies"
+    "cookies",
+    "scripting"
   ],
   "web_accessible_resources": [
     {
@@ -40,5 +42,10 @@
         "<all_urls>"
       ]
     }
+  ],
+  "trial_tokens": [
+    "Note: Replace with actual origin trial tokens from https://developer.chrome.com/origintrials/",
+    "Token for Prompt API: Register for 'Prompt API for Gemini Nano'",
+    "Token for Summarizer API: Register for 'Summarization API'"
   ]
 }

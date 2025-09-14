@@ -10,11 +10,15 @@ export const FormContainer = styled.div`
   border-radius: ${({ theme }: { theme: Theme }) => theme.borderRadius.md};
   box-shadow: ${({ theme }: { theme: Theme }) => theme.shadows.FORM};
   min-width: ${({ theme }: { theme: Theme }) => theme.sizes.form.minWidth};
+  max-width: 400px;
+  max-height: 100vh;
   padding: ${({ theme }: { theme: Theme }) => theme.spacing.lg};
   position: fixed;
   z-index: ${({ theme }: { theme: Theme }) => theme.zIndex.max};
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   pointer-events: auto; /* Ensure form can receive clicks */
+  overflow-y: auto;
+  overflow-x: hidden;
 `;
 
 export const DragHandle = styled.div`

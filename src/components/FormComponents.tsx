@@ -20,6 +20,7 @@ interface CompanyAutocompleteProps {
   onSelect: (company: Company | null) => void;
   onInputChange?: (inputValue: string) => void;
   selectedCompany: Company | null;
+  inputValue?: string;
   placeholder?: string;
 }
 
@@ -118,20 +119,28 @@ export function CompanyAutocomplete({
   onSelect,
   onInputChange,
   selectedCompany,
+  inputValue: externalInputValue,
   placeholder = "Search companies..."
 }: CompanyAutocompleteProps) {
-  const [inputValue, setInputValue] = useState(selectedCompany?.name || "");
+  const [inputValue, setInputValue] = useState(externalInputValue || selectedCompany?.name || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionRefs = useRef<(HTMLLIElement | null)[]>([]);
   const debouncedSearchTerm = useDebounce(inputValue, 300);
 
+  // Update internal state when external inputValue changes
   useEffect(() => {
-    if (selectedCompany) {
+    if (externalInputValue !== undefined) {
+      setInputValue(externalInputValue);
+    }
+  }, [externalInputValue]);
+
+  useEffect(() => {
+    if (selectedCompany && !externalInputValue) {
       setInputValue(selectedCompany.name);
     }
-  }, [selectedCompany]);
+  }, [selectedCompany, externalInputValue]);
 
   useEffect(() => {
     if (debouncedSearchTerm) {

@@ -1,6 +1,8 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import ContentApp from "./ContentApp";
+// Import AI extractor to initialize it
+import "./content-scripts/ai-extractor";
 
 const rootId = "job-tracker-shadow-host";
 
