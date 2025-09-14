@@ -24,7 +24,8 @@
   "host_permissions": [
     "<all_urls>",
     "https://localhost:*/*",
-    "http://localhost:*/*"
+    "http://localhost:*/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "permissions": [
     "tabs",

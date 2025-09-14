@@ -22,6 +22,8 @@ import {
 import { sanitizeInput } from "../utils/validation";
 import { BackgroundGraphQLClient } from "../utils/graphql-client";
 import { COLORS, SHADOWS } from "../constants/colors";
+import { AIService, type JobInformation } from "../services/ai-service";
+import AISettings from "./AISettings";
 import styled from "@emotion/styled";
 
 // Constants for this component - using build-time constants from Vite
@@ -95,6 +97,42 @@ const RequiredIndicator = styled.span`
   margin-left: 2px;
 `;
 
+const AIButton = styled.button`
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  box-shadow: ${SHADOWS.BUTTON};
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: ${SHADOWS.BUTTON_HOVER};
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .ai-icon {
+    font-size: 14px;
+  }
+`;
+
 // Enable development mode for better debugging
 declare global {
   interface Window {
@@ -137,6 +175,12 @@ export default function FloatingForm({
   const [positionError, setPositionError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+
+  // AI extraction state
+  const [isExtractingAI, setIsExtractingAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [showAISettings, setShowAISettings] = useState(false);
+  const [aiReady, setAiReady] = useState(false);
 
   // Enhanced hooks for dashboard functionality
   const {
@@ -241,6 +285,18 @@ export default function FloatingForm({
     }
   }, [selectedCompany, searchCompanies]);
 
+  // Check AI service status on mount
+  useEffect(() => {
+    const checkAIStatus = async () => {
+      const status = await AIService.getApiKeyStatus();
+      setAiReady(status.hasKey && status.isInitialized);
+      if (!status.hasKey) {
+        setShowAISettings(true);
+      }
+    };
+    checkAIStatus();
+  }, []);
+
   // Handle Escape key press to close the form
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -271,6 +327,55 @@ export default function FloatingForm({
 
     return isValid;
   }, [position]);
+
+  const handleAIExtraction = async () => {
+    console.info('🤖 Starting AI extraction process...');
+    setIsExtractingAI(true);
+    setAiError(null);
+
+    try {
+      const result = await AIService.extractJobInformation();
+      
+      if (result.success && result.data) {
+        const jobInfo: JobInformation = result.data;
+        
+        console.info('✅ AI extraction successful:', jobInfo);
+        
+        // Auto-fill form fields with AI extracted data
+        if (jobInfo.positionTitle && !position) {
+          setPosition(jobInfo.positionTitle);
+        }
+        
+        if (jobInfo.jobDescription && !notes) {
+          setNotes(jobInfo.jobDescription);
+        }
+        
+        if (jobInfo.companyName && !selectedCompany && !companyInputValue) {
+          setCompanyInputValue(jobInfo.companyName);
+          // Also search for this company in the database
+          searchCompanies(jobInfo.companyName);
+        }
+        
+        console.info('📝 Form fields populated with AI data');
+      } else {
+        setAiError(result.error || 'AI extraction failed');
+        console.error('❌ AI extraction failed:', result.error);
+      }
+    } catch (error) {
+      const errorMessage = `AI extraction error: ${error}`;
+      setAiError(errorMessage);
+      console.error('❌', errorMessage);
+    } finally {
+      setIsExtractingAI(false);
+    }
+  };
+
+  const handleSetApiKey = async () => {
+    // This function is now handled by the AISettings component
+    const status = await AIService.getApiKeyStatus();
+    setAiReady(status.hasKey && status.isInitialized);
+    setShowAISettings(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -374,6 +479,66 @@ export default function FloatingForm({
             </div>
           )}
         </WarningMessage>
+      )}
+
+      {/* AI Settings */}
+      {showAISettings && (
+        <AISettings onClose={handleSetApiKey} />
+      )}
+
+      {/* AI Extraction Button */}
+      {!showAISettings && (
+        <AIButton 
+          onClick={handleAIExtraction} 
+          disabled={isExtractingAI || !aiReady}
+          type="button"
+        >
+          <span className="ai-icon">🤖</span>
+          {isExtractingAI ? 'Extracting with AI...' : 'Extract Job Info with AI'}
+          {!aiReady && <span style={{ fontSize: '10px', marginLeft: '4px' }}>(Configure AI first)</span>}
+        </AIButton>
+      )}
+
+      {/* AI Settings Toggle */}
+      {!showAISettings && (
+        <div style={{ textAlign: 'right', marginBottom: '12px' }}>
+          <button
+            onClick={() => setShowAISettings(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: COLORS.GRAY_500,
+              fontSize: '10px',
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            ⚙️ AI Settings
+          </button>
+        </div>
+      )}
+
+      {/* AI Error Display */}
+      {aiError && (
+        <ErrorMessage>
+          AI Error: {aiError}
+          {aiError.includes('API key') && (
+            <button 
+              onClick={() => setShowAISettings(true)}
+              style={{
+                marginLeft: '8px',
+                background: 'none',
+                border: 'none',
+                color: 'inherit',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontSize: 'inherit'
+              }}
+            >
+              Configure AI
+            </button>
+          )}
+        </ErrorMessage>
       )}
 
       {/* Form Content */}
