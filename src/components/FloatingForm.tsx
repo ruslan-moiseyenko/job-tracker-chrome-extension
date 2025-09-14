@@ -23,6 +23,7 @@ import { sanitizeInput } from "../utils/validation";
 import { BackgroundGraphQLClient } from "../utils/graphql-client";
 import { COLORS, SHADOWS } from "../constants/colors";
 import { AIService, type JobInformation } from "../services/ai-service";
+import AISettings from "./AISettings";
 import styled from "@emotion/styled";
 
 // Constants for this component - using build-time constants from Vite
@@ -132,35 +133,6 @@ const AIButton = styled.button`
   }
 `;
 
-const APIKeyInput = styled.div`
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
-  font-size: 12px;
-
-  input {
-    width: 100%;
-    margin-top: 8px;
-    padding: 8px;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-size: 12px;
-  }
-
-  button {
-    margin-top: 8px;
-    background: #f59e0b;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-  }
-`;
-
 // Enable development mode for better debugging
 declare global {
   interface Window {
@@ -207,8 +179,8 @@ export default function FloatingForm({
   // AI extraction state
   const [isExtractingAI, setIsExtractingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [showAISettings, setShowAISettings] = useState(false);
+  const [aiReady, setAiReady] = useState(false);
 
   // Enhanced hooks for dashboard functionality
   const {
@@ -317,8 +289,9 @@ export default function FloatingForm({
   useEffect(() => {
     const checkAIStatus = async () => {
       const status = await AIService.getApiKeyStatus();
+      setAiReady(status.hasKey && status.isInitialized);
       if (!status.hasKey) {
-        setShowApiKeyInput(true);
+        setShowAISettings(true);
       }
     };
     checkAIStatus();
@@ -398,20 +371,10 @@ export default function FloatingForm({
   };
 
   const handleSetApiKey = async () => {
-    if (!apiKeyInput.trim()) {
-      setAiError('Please enter a valid API key');
-      return;
-    }
-
-    const success = await AIService.setApiKey(apiKeyInput.trim());
-    if (success) {
-      setShowApiKeyInput(false);
-      setApiKeyInput('');
-      setAiError(null);
-      console.info('✅ API key set successfully');
-    } else {
-      setAiError('Failed to set API key. Please check if the key is valid.');
-    }
+    // This function is now handled by the AISettings component
+    const status = await AIService.getApiKeyStatus();
+    setAiReady(status.hasKey && status.isInitialized);
+    setShowAISettings(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -518,42 +481,41 @@ export default function FloatingForm({
         </WarningMessage>
       )}
 
-      {/* API Key Input */}
-      {showApiKeyInput && (
-        <APIKeyInput>
-          <div>
-            🔑 <strong>Gemini API Key Required</strong>
-            <br />
-            To use AI extraction, please enter your Google Gemini API key:
-          </div>
-          <input
-            type="password"
-            placeholder="Enter your Gemini API key..."
-            value={apiKeyInput}
-            onChange={(e) => setApiKeyInput(e.target.value)}
-          />
-          <div>
-            <button onClick={handleSetApiKey}>Save API Key</button>
-            <button 
-              onClick={() => setShowApiKeyInput(false)}
-              style={{ marginLeft: '8px', background: '#6b7280' }}
-            >
-              Skip
-            </button>
-          </div>
-        </APIKeyInput>
+      {/* AI Settings */}
+      {showAISettings && (
+        <AISettings onClose={handleSetApiKey} />
       )}
 
       {/* AI Extraction Button */}
-      {!showApiKeyInput && (
+      {!showAISettings && (
         <AIButton 
           onClick={handleAIExtraction} 
-          disabled={isExtractingAI}
+          disabled={isExtractingAI || !aiReady}
           type="button"
         >
           <span className="ai-icon">🤖</span>
           {isExtractingAI ? 'Extracting with AI...' : 'Extract Job Info with AI'}
+          {!aiReady && <span style={{ fontSize: '10px', marginLeft: '4px' }}>(Configure AI first)</span>}
         </AIButton>
+      )}
+
+      {/* AI Settings Toggle */}
+      {!showAISettings && (
+        <div style={{ textAlign: 'right', marginBottom: '12px' }}>
+          <button
+            onClick={() => setShowAISettings(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: COLORS.GRAY_500,
+              fontSize: '10px',
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            ⚙️ AI Settings
+          </button>
+        </div>
       )}
 
       {/* AI Error Display */}
@@ -562,7 +524,7 @@ export default function FloatingForm({
           AI Error: {aiError}
           {aiError.includes('API key') && (
             <button 
-              onClick={() => setShowApiKeyInput(true)}
+              onClick={() => setShowAISettings(true)}
               style={{
                 marginLeft: '8px',
                 background: 'none',
@@ -573,7 +535,7 @@ export default function FloatingForm({
                 fontSize: 'inherit'
               }}
             >
-              Set API Key
+              Configure AI
             </button>
           )}
         </ErrorMessage>
